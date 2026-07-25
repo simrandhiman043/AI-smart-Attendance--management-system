@@ -43,6 +43,6 @@ AI-Smart-Attendance-System/
 - Attendance Prediction using AI
 
 ## Author
-Simran Dhiman
-Jiya Arora
-kavya Verma
+- Simran Dhiman
+- Jiya Arora
+- kavya Verma
