@@ -42,7 +42,7 @@ AI-Smart-Attendance-System/
 - Email Notifications
 - Attendance Prediction using AI
 
-## Author
+## Team Members
 - Simran Dhiman
 - Jiya Arora
 - kavya Verma
