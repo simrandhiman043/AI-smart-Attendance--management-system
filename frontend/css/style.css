@@ -234,3 +234,95 @@ body {
         width: 100%;   /* cards take full width on very small screens */
     }
 }
+
+/* ==============================
+   Login Page (Student / Teacher)
+   ============================== */
+
+/* Wrapper that centers the login card on the page */
+.login-wrapper {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: calc(100vh - 62px);   /* full height minus navbar height */
+    padding: 40px 20px;
+    background-color: #e8f0fe;        /* same light blue used in hero/about */
+}
+
+/* The login card itself */
+.login-card {
+    background-color: #ffffff;
+    width: 100%;
+    max-width: 380px;
+    padding: 35px 30px;
+    border-radius: 12px;              /* rounded corners */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);   /* subtle shadow */
+    text-align: center;
+}
+
+.login-card h1 {
+    font-size: 26px;
+    color: #1f2937;
+    margin-bottom: 20px;
+}
+
+/* Group for label + input */
+.input-group {
+    text-align: left;
+    margin-bottom: 18px;
+}
+
+.input-group label {
+    display: block;
+    font-size: 14px;
+    color: #333;
+    margin-bottom: 6px;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 10px 12px;
+    font-size: 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.3s ease;
+}
+
+.input-group input:focus {
+    border-color: #4f9dff;   /* highlight border when active */
+}
+
+/* Login button reuses the same style as the hero "Get Started" button */
+.login-card .btn-primary {
+    width: 100%;
+    margin-top: 5px;
+}
+
+/* Secondary button style for "Back to Home" */
+.btn-secondary {
+    width: 100%;
+    background-color: transparent;
+    color: #4f9dff;
+    border: 1px solid #4f9dff;
+    padding: 12px 28px;
+    font-size: 16px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 12px;
+    text-decoration: none;
+    display: inline-block;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.btn-secondary:hover {
+    background-color: #4f9dff;
+    color: #ffffff;
+}
+
+/* Mobile adjustment for the login card */
+@media (max-width: 480px) {
+    .login-card {
+        padding: 25px 20px;
+    }
+}
