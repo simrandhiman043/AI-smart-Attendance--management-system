@@ -6,7 +6,7 @@
     <title>AI Smart Attendance Management System</title>
 
     <!-- Linking external CSS file -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 
@@ -38,15 +38,15 @@
 
     <!-- ===== Feature Cards Section ===== -->
     <section class="cards-section">
-        <div class="card">
-            <h3>Student Login</h3>
-            <p>Students can log in to view their attendance records and stay updated.</p>
-        </div>
+        <a href="{{ url_for('student_login') }}" class="card">
+    <h3>Student Login</h3>
+    <p>Students can log in to view their attendance records and stay updated.</p>
+    </a>
 
-        <div class="card">
-            <h3>Teacher Login</h3>
-            <p>Teachers can log in to mark and manage attendance for their classes.</p>
-        </div>
+        <a href="{{ url_for('teacher_login') }}" class="card">
+    <h3>Teacher Login</h3>
+    <p>Teachers can log in to mark and manage attendance for their classes.</p>
+    </a>
 
         <div class="card">
             <h3>AI Assistant</h3>

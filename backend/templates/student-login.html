@@ -6,7 +6,7 @@
     <title>Student Login | AI Smart Attendance Management System</title>
 
     <!-- Reusing the same stylesheet as the landing page -->
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
 
@@ -47,7 +47,7 @@
             </form>
 
             <!-- Back to Home button, redirects to landing page -->
-            <a href="index.html" class="btn-secondary">Back to Home</a>
+            <a href="{{ url_for('home') }}" class="btn-secondary">Back to Home</a>
         </div>
     </section>
 
