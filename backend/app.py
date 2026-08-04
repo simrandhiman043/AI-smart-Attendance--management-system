@@ -1,5 +1,5 @@
 # Main Flask application
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
@@ -7,13 +7,39 @@ app = Flask(__name__)
 def home():
     return render_template("index.html")
 
-@app.route("/student-login")
+@app.route("/student-login", methods=["GET", "POST"])
 def student_login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        print("Student Email:", email)
+        print("Student Password:", password)
+
+        return render_template("student-dashboard.html")
+
     return render_template("student-login.html")
 
-@app.route("/teacher-login")
+@app.route("/teacher-login", methods=["GET", "POST"])
 def teacher_login():
-    return render_template("Teacher-login.html")    
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+
+        print("Teacher Email:", email)
+        print("Teacher Password:", password)
+
+        return render_template("teacher-dashboard.html")
+
+    return render_template("teacher-login.html")   
+
+@app.route("/student-dashboard")
+def student_dashboard():  
+    return render_template("student-dashboard.html")  
+
+@app.route("/teacher-dashboard")
+def teacher_dashboard():
+    return render_template("teacher-dashboard.html")
 
 if __name__ == "__main__":
     app.run(debug=True)

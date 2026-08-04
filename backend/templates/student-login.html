@@ -29,7 +29,7 @@
         <div class="login-card">
             <h1>Student Login</h1>
 
-            <form>
+            <form method="POST" action="{{ url_for('student_login') }}">
                 <!-- Email field -->
                 <div class="input-group">
                     <label for="email">Email</label>
