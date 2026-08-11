@@ -1,11 +1,15 @@
 # Main Flask application
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, redirect, url_for
 import mysql.connector
 from dotenv import load_dotenv
 import os
+from routes.student_registration import student_registration_bp
+from werkzeug.security import check_password_hash
 
 app = Flask(__name__)
 load_dotenv()  # Load environment variables from .env file
+app.register_blueprint(student_registration_bp)
+
 
 db = mysql.connector.connect(
     host=os.getenv("MYSQL_HOST"),
@@ -25,10 +29,20 @@ def student_login():
         email = request.form.get("email")
         password = request.form.get("password")
 
-        print("Student Email:", email)
-        print("Student Password:", password)
+        cursor = db.cursor(dictionary=True)
 
-        return render_template("student-dashboard.html")
+        cursor.execute(
+            "SELECT * FROM students WHERE email = %s",
+            (email,)
+        )
+
+        student = cursor.fetchone()
+        cursor.close()
+
+        if student and check_password_hash(student["password"], password):
+            return redirect(url_for("student_dashboard"))
+
+        return "Invalid email or password", 401
 
     return render_template("student-login.html")
 
@@ -52,6 +66,10 @@ def student_dashboard():
 @app.route("/teacher-dashboard")
 def teacher_dashboard():
     return render_template("teacher-dashboard.html")
+
+@app.route('/student-register')
+def student_register():
+    return render_template('student-register.html')
 
 
 
