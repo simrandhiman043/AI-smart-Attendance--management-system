@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Registration | AI Smart Attendance Management System</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="logo">AI Attendance System</div>
+
+        <nav>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('home') }}#features">Features</a></li>
+                <li><a href="{{ url_for('home') }}#about">About</a></li>
+                <li><a href="{{ url_for('home') }}#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+
+    <section class="login-wrapper">
+
+        <div class="login-card">
+
+            <h1>Teacher Registration</h1>
+
+            <form action="{{ url_for('teacher_registration.register_teacher') }}" method="POST">
+
+                <div class="input-group">
+                    <label for="name">Full Name</label>
+                    <input
+                        type="text"
+                        id="name"
+                        name="name"
+                        placeholder="Enter your full name"
+                        required
+                    >
+                </div>
+
+                <div class="input-group">
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        placeholder="Enter your email"
+                        required
+                    >
+                </div>
+
+                <div class="input-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        placeholder="Create a password"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="btn-primary">
+                    Register
+                </button>
+
+            </form>
+
+            <a href="{{ url_for('home') }}" class="btn-secondary">
+                Back to Home
+            </a>
+
+        </div>
+
+    </section>
+
+
+    <footer class="footer">
+        <p>&copy; 2026 AI Smart Attendance Management System. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>

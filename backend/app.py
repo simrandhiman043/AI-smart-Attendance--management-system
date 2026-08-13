@@ -4,11 +4,13 @@ import mysql.connector
 from dotenv import load_dotenv
 import os
 from routes.student_registration import student_registration_bp
+from routes.teacher_registration import teacher_registration_bp
 from werkzeug.security import check_password_hash
 
 app = Flask(__name__)
 load_dotenv()  # Load environment variables from .env file
 app.register_blueprint(student_registration_bp)
+app.register_blueprint(teacher_registration_bp)
 
 
 db = mysql.connector.connect(
@@ -40,7 +42,7 @@ def student_login():
         cursor.close()
 
         if student and check_password_hash(student["password"], password):
-            return redirect(url_for("student_dashboard"))
+            return render_template("student-dashboard.html", student=student)
 
         return "Invalid email or password", 401
 
@@ -52,12 +54,25 @@ def teacher_login():
         email = request.form.get("email")
         password = request.form.get("password")
 
-        print("Teacher Email:", email)
-        print("Teacher Password:", password)
+        cursor = db.cursor(dictionary=True)
 
-        return render_template("teacher-dashboard.html")
+        cursor.execute(
+            "SELECT * FROM teachers WHERE email = %s",
+            (email,)
+        )
 
-    return render_template("teacher-login.html")   
+        teacher = cursor.fetchone()
+        cursor.close()
+
+        if teacher and check_password_hash(teacher["password"], password):
+            return render_template(
+                "teacher-dashboard.html",
+                teacher=teacher
+            )
+
+        return "Invalid email or password", 401
+
+    return render_template("teacher-login.html")
 
 @app.route("/student-dashboard")
 def student_dashboard():  
@@ -70,6 +85,10 @@ def teacher_dashboard():
 @app.route('/student-register')
 def student_register():
     return render_template('student-register.html')
+
+@app.route("/teacher-register")
+def teacher_register():
+    return render_template("teacher-register.html")
 
 
 

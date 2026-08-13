@@ -1,9 +1,79 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Teacher Dashboard</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Dashboard | AI Smart Attendance Management System</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
+
 <body>
-    <h1>Welcome Teacher!</h1>
+
+    <header class="navbar">
+        <div class="logo">AI Attendance System</div>
+
+        <nav>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="#">Dashboard</a></li>
+                <li><a href="#">Courses</a></li>
+                <li><a href="#">Attendance</a></li>
+            </ul>
+        </nav>
+    </header>
+
+
+    <main class="dashboard-container">
+
+        <section class="dashboard-header">
+            <h1>Welcome, {{ teacher.name }}!</h1>
+            <p>Manage your courses and student attendance.</p>
+        </section>
+
+
+        <section class="dashboard-card">
+            <h2>Teacher Profile</h2>
+
+            <div class="student-details">
+                <p><strong>Name:</strong> {{ teacher.name }}</p>
+                <p><strong>Email:</strong> {{ teacher.email }}</p>
+            </div>
+        </section>
+
+
+        <section class="dashboard-card">
+            <h2>My Courses</h2>
+
+            <p>Course information will appear here.</p>
+        </section>
+
+
+        <section class="dashboard-card">
+            <h2>Attendance Management</h2>
+
+            <div class="dashboard-actions">
+                <a href="#" class="btn-primary">Mark Attendance</a>
+                <a href="#" class="btn-primary">View Attendance</a>
+            </div>
+        </section>
+
+
+        <section class="dashboard-card">
+            <h2>Quick Actions</h2>
+
+            <div class="dashboard-actions">
+                <a href="#" class="btn-primary">Manage Courses</a>
+                <a href="{{ url_for('home') }}" class="btn-secondary">Logout</a>
+            </div>
+        </section>
+
+    </main>
+
+
+    <footer class="footer">
+        <p>&copy; 2026 AI Smart Attendance Management System. All rights reserved.</p>
+    </footer>
+
 </body>
 </html>
