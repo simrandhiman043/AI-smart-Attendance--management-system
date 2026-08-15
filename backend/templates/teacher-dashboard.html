@@ -16,7 +16,7 @@
         <nav>
             <ul class="nav-links">
                 <li><a href="{{ url_for('home') }}">Home</a></li>
-                <li><a href="#">Dashboard</a></li>
+                <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
                 <li><a href="#">Courses</a></li>
                 <li><a href="#">Attendance</a></li>
             </ul>
@@ -41,13 +41,20 @@
             </div>
         </section>
 
-
         <section class="dashboard-card">
             <h2>My Courses</h2>
 
-            <p>Course information will appear here.</p>
-        </section>
-
+            {% if courses %}
+                {% for course in courses %}
+                    <div class="course-item">
+                        <h3>{{ course.course_name }}</h3>
+                        <p>Course Code: {{ course.course_code }}</p>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p>No courses added yet.</p>
+            {% endif %}
+        </section>        
 
         <section class="dashboard-card">
             <h2>Attendance Management</h2>
@@ -63,7 +70,7 @@
             <h2>Quick Actions</h2>
 
             <div class="dashboard-actions">
-                <a href="#" class="btn-primary">Manage Courses</a>
+                <a href="{{ url_for('manage_courses') }}" class="btn-primary">Manage Courses</a>
                 <a href="{{ url_for('home') }}" class="btn-secondary">Logout</a>
             </div>
         </section>

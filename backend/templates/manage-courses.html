@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Manage Courses | AI Smart Attendance Management System</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <header class="navbar">
+        <div class="logo">AI Attendance System</div>
+
+        <nav>
+            <ul class="nav-links">
+                <li>
+                    <a href="{{ url_for('home') }}">Home</a>
+                </li>
+
+                <li>
+                    <a href="{{ url_for('teacher_dashboard') }}">Dashboard</a>
+                </li>
+            </ul>
+        </nav>
+    </header>
+
+
+    <main class="dashboard-container">
+
+        <section class="dashboard-header">
+            <h1>Manage Courses</h1>
+            <p>View and manage your courses.</p>
+        </section>
+
+
+        <section class="dashboard-card">
+
+            <h2>My Courses</h2>
+
+            {% if courses %}
+
+                {% for course in courses %}
+
+                    <div class="course-item">
+
+                        <h3>{{ course.course_name }}</h3>
+
+                        <p>
+                            <strong>Course Code:</strong>
+                            {{ course.course_code }}
+                        </p>
+
+                    </div>
+
+                {% endfor %}
+
+            {% else %}
+
+                <p>No courses added yet.</p>
+
+            {% endif %}
+
+        </section>
+
+    </main>
+
+
+    <footer class="footer">
+        <p>&copy; 2026 AI Smart Attendance Management System. All rights reserved.</p>
+    </footer>
+
+</body>
+</html>
