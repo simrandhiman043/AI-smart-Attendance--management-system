@@ -22,7 +22,8 @@ db = mysql.connector.connect(
     user=os.getenv("MYSQL_USER"),
     password=os.getenv("MYSQL_PASSWORD"),
     database=os.getenv("MYSQL_DATABASE"),
-    use_pure=True
+    use_pure=True,
+    autocommit=True
 )
 
 @app.route("/")
@@ -71,14 +72,12 @@ def teacher_login():
         if teacher and check_password_hash(teacher["password"], password):
             session["teacher_id"] = teacher["teacher_id"]
 
-            return render_template(
-                "teacher-dashboard.html",
-                teacher=teacher
-            )
+            return redirect(url_for("teacher_dashboard"))
 
         return "Invalid email or password", 401
 
     return render_template("teacher-login.html")
+
 
 @app.route("/teacher-dashboard")
 def teacher_dashboard():
@@ -115,16 +114,14 @@ def teacher_dashboard():
         courses=courses
     )
 
+
 @app.route("/manage-courses")
 def manage_courses():
-
     teacher_id = session.get("teacher_id")
-
     if not teacher_id:
         return redirect(url_for("teacher_login"))
 
     cursor = db.cursor(dictionary=True)
-
     cursor.execute(
         """
         SELECT course_id, course_name, course_code
@@ -133,10 +130,8 @@ def manage_courses():
         """,
         (teacher_id,)
     )
-
     courses = cursor.fetchall()
     cursor.close()
-
     return render_template(
         "manage-courses.html",
         courses=courses

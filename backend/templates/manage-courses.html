@@ -39,22 +39,48 @@
         <section class="dashboard-card">
 
             <h2>My Courses</h2>
+            <a href="{{ url_for('teacher_course') }}" class="btn-primary">
+                    Add New Course
+            </a>
 
             {% if courses %}
 
                 {% for course in courses %}
 
-                    <div class="course-item">
+        <div class="course-item">
+             <h3>{{ course.course_name }}</h3>
 
-                        <h3>{{ course.course_name }}</h3>
+            <p>
+                <strong>Course Code:</strong>
+                {{ course.course_code }}
+            </p>
 
-                        <p>
-                            <strong>Course Code:</strong>
-                            {{ course.course_code }}
-                        </p>
+            <form method="POST"
+                action="{{ url_for('course_management.edit_course', course_id=course.course_id) }}">
 
-                    </div>
+                <input type="text"
+                       name="course_name"
+                       value="{{ course.course_name }}"
+                       required>
 
+                <input type="text"
+                         name="course_code"
+                         value="{{ course.course_code }}"
+                         required>
+
+                <button type="submit" class="btn-secondary">
+                        Edit / Update
+                </button>
+
+            </form>
+
+            <form method="POST"
+                action="{{ url_for('course_management.delete_course', course_id=course.course_id) }}">
+                <button type="submit" class="btn-danger">
+                       Delete
+                </button>
+            </form>
+        </div>
                 {% endfor %}
 
             {% else %}
