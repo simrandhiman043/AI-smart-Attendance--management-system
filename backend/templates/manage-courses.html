@@ -1,91 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Manage Courses | AI Smart Attendance Management System</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
 
     <header class="navbar">
-        <div class="logo">AI Attendance System</div>
+
+        <div class="logo">
+            AI Attendance System
+        </div>
 
         <nav>
             <ul class="nav-links">
+
                 <li>
-                    <a href="{{ url_for('home') }}">Home</a>
+                    <a href="{{ url_for('home') }}">
+                        Home
+                    </a>
                 </li>
 
                 <li>
-                    <a href="{{ url_for('teacher_dashboard') }}">Dashboard</a>
+                    <a href="{{ url_for('teacher_dashboard') }}">
+                        Dashboard
+                    </a>
                 </li>
+
             </ul>
         </nav>
+
     </header>
 
 
     <main class="dashboard-container">
 
         <section class="dashboard-header">
+
             <h1>Manage Courses</h1>
-            <p>View and manage your courses.</p>
+
+            <p>
+                Add, view and manage your courses.
+            </p>
+
         </section>
 
+
+        <!-- Add New Course -->
+
+        <section class="dashboard-card">
+
+            <h2>Add New Course</h2>
+
+            <form action="{{ url_for('course_management.teacher_course') }}"
+                  method="POST">
+
+                <div class="input-group">
+
+                    <label for="course_name">
+                        Course Name
+                    </label>
+
+                    <input
+                        type="text"
+                        id="course_name"
+                        name="course_name"
+                        placeholder="Enter course name"
+                        required
+                    >
+
+                </div>
+
+
+                <div class="input-group">
+
+                    <label for="course_code">
+                        Course Code
+                    </label>
+
+                    <input
+                        type="text"
+                        id="course_code"
+                        name="course_code"
+                        placeholder="Enter course code"
+                        required
+                    >
+
+                </div>
+
+
+                <button type="submit" class="btn-primary">
+                    Add Course
+                </button>
+
+            </form>
+
+        </section>
+
+
+        <!-- My Courses -->
 
         <section class="dashboard-card">
 
             <h2>My Courses</h2>
-            <a href="{{ url_for('teacher_course') }}" class="btn-primary">
-                    Add New Course
-            </a>
+
 
             {% if courses %}
 
                 {% for course in courses %}
 
-        <div class="course-item">
-             <h3>{{ course.course_name }}</h3>
+                    <div class="course-item">
 
-            <p>
-                <strong>Course Code:</strong>
-                {{ course.course_code }}
-            </p>
+                        <h3>
+                            {{ course.course_name }}
+                        </h3>
 
-            <form method="POST"
-                action="{{ url_for('course_management.edit_course', course_id=course.course_id) }}">
+                        <p>
+                            <strong>Course Code:</strong>
+                            {{ course.course_code }}
+                        </p>
 
-                <input type="text"
-                       name="course_name"
-                       value="{{ course.course_name }}"
-                       required>
 
-                <input type="text"
-                         name="course_code"
-                         value="{{ course.course_code }}"
-                         required>
+                        <!-- Edit Course -->
 
-                <button type="submit" class="btn-secondary">
-                        Edit / Update
-                </button>
+                        <form
+                            method="POST"
+                            action="{{ url_for('course_management.edit_course', course_id=course.course_id) }}"
+                        >
 
-            </form>
+                            <input
+                                type="text"
+                                name="course_name"
+                                value="{{ course.course_name }}"
+                                required
+                            >
 
-            <form method="POST"
-                action="{{ url_for('course_management.delete_course', course_id=course.course_id) }}">
-                <button type="submit" class="btn-danger">
-                       Delete
-                </button>
-            </form>
-        </div>
+                            <input
+                                type="text"
+                                name="course_code"
+                                value="{{ course.course_code }}"
+                                required
+                            >
+
+                            <button
+                                type="submit"
+                                class="btn-secondary"
+                            >
+                                Edit / Update
+                            </button>
+
+                        </form>
+
+
+                        <!-- Delete Course -->
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('course_management.delete_course', course_id=course.course_id) }}"
+                        >
+
+                            <button
+                                type="submit"
+                                class="btn-danger"
+                            >
+                                Delete
+                            </button>
+
+                        </form>
+
+                    </div>
+
                 {% endfor %}
 
             {% else %}
 
-                <p>No courses added yet.</p>
+                <p>
+                    No courses added yet.
+                </p>
 
             {% endif %}
 
@@ -95,8 +193,14 @@
 
 
     <footer class="footer">
-        <p>&copy; 2026 AI Smart Attendance Management System. All rights reserved.</p>
+
+        <p>
+            &copy; 2026 AI Smart Attendance Management System.
+            All rights reserved.
+        </p>
+
     </footer>
 
 </body>
+
 </html>

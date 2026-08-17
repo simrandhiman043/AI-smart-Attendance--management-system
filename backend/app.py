@@ -137,6 +137,110 @@ def manage_courses():
         courses=courses
     )
 
+@app.route("/mark-attendance", methods=["GET", "POST"])
+def mark_attendance():
+
+    teacher_id = session.get("teacher_id")
+
+    if not teacher_id:
+        return redirect(url_for("teacher_login"))
+
+    cursor = db.cursor(dictionary=True)
+
+    cursor.execute(
+        """
+        SELECT course_id, course_name, course_code
+        FROM courses
+        WHERE teacher_id = %s
+        """,
+        (teacher_id,)
+    )
+
+    courses = cursor.fetchall()
+
+    students = []
+    selected_course = None
+    selected_date = None
+
+    if request.method == "POST":
+
+        course_id = request.form.get("course_id")
+        attendance_date = request.form.get("attendance_date")
+
+        selected_date = attendance_date
+
+        cursor.execute(
+            """
+            SELECT course_id, course_name, course_code
+            FROM courses
+            WHERE course_id = %s
+            AND teacher_id = %s
+            """,
+            (course_id, teacher_id)
+        )
+
+        selected_course = cursor.fetchone()
+
+        if selected_course:
+
+            cursor.execute(
+                """
+                SELECT s.student_id, s.name, s.roll_number
+                FROM students s
+                INNER JOIN enrollments e
+                ON s.student_id = e.student_id
+                WHERE e.course_id = %s
+                ORDER BY s.roll_number
+                """,
+                (course_id,)
+            )
+
+            students = cursor.fetchall()
+
+            if request.form.get("save_attendance"):
+
+                for student in students:
+
+                    status = request.form.get(
+                        f"attendance_{student['student_id']}"
+                    )
+
+                    if status:
+
+                        cursor.execute(
+                            """
+                            INSERT INTO attendance
+                            (student_id, course_id, teacher_id,
+                             attendance_date, status)
+                            VALUES (%s, %s, %s, %s, %s)
+                            ON DUPLICATE KEY UPDATE
+                            status = VALUES(status)
+                            """,
+                            (
+                                student["student_id"],
+                                course_id,
+                                teacher_id,
+                                attendance_date,
+                                status
+                            )
+                        )
+
+                db.commit()
+
+                cursor.close()
+
+                return redirect(url_for("mark_attendance"))
+
+    cursor.close()
+
+    return render_template(
+        "mark-attendance.html",
+        courses=courses,
+        students=students,
+        selected_course=selected_course,
+        selected_date=selected_date
+    )
+
 @app.route("/student-dashboard")
 def student_dashboard():  
     return render_template("student-dashboard.html")  

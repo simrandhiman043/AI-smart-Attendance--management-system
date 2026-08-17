@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Mark Attendance</title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+
+<body>
+
+    <main class="dashboard-container">
+
+        <section class="dashboard-card">
+
+            <h1>Mark Attendance</h1>
+
+            <form method="POST">
+
+                <label for="course_id">
+                    Select Course
+                </label>
+
+                <select name="course_id" id="course_id" required>
+
+                    <option value="">
+                        -- Select Course --
+                    </option>
+
+                    {% for course in courses %}
+
+                        <option value="{{ course.course_id }}"
+                            {% if selected_course and
+                                  selected_course.course_id == course.course_id %}
+                                selected
+                            {% endif %}>
+
+                            {{ course.course_name }}
+                            ({{ course.course_code }})
+
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+                <br><br>
+
+                <label for="attendance_date">
+                    Attendance Date
+                </label>
+
+                <input type="date"
+                       name="attendance_date"
+                       id="attendance_date"
+                       value="{{ selected_date or '' }}"
+                       required>
+
+                <br><br>
+
+                <button type="submit" class="btn-primary">
+                    Show Students
+                </button>
+
+            </form>
+
+        </section>
+
+
+        {% if selected_course %}
+
+        <section class="dashboard-card">
+
+            <h2>
+                {{ selected_course.course_name }}
+            </h2>
+
+            <p>
+                Course Code:
+                {{ selected_course.course_code }}
+            </p>
+
+
+            {% if students %}
+
+            <form method="POST">
+
+                <input type="hidden"
+                       name="course_id"
+                       value="{{ selected_course.course_id }}">
+
+                <input type="hidden"
+                       name="attendance_date"
+                       value="{{ selected_date }}">
+
+                {% for student in students %}
+
+                <div class="course-item">
+
+                    <h3>{{ student.name }}</h3>
+
+                    <p>
+                        Roll Number:
+                        {{ student.roll_number }}
+                    </p>
+
+                    <label>
+                        <input type="radio"
+                               name="attendance_{{ student.student_id }}"
+                               value="Present"
+                               required>
+
+                        Present
+                    </label>
+
+                    <label>
+                        <input type="radio"
+                               name="attendance_{{ student.student_id }}"
+                               value="Absent">
+
+                        Absent
+                    </label>
+
+                </div>
+
+                {% endfor %}
+
+                <br>
+
+                <button type="submit"
+                        name="save_attendance"
+                        value="1"
+                        class="btn-primary">
+
+                    Save Attendance
+
+                </button>
+
+            </form>
+
+            {% else %}
+
+                <p>
+                    No students are enrolled in this course yet.
+                </p>
+
+            {% endif %}
+
+        </section>
+
+        {% endif %}
+
+    </main>
+
+</body>
+
+</html>

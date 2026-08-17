@@ -21,44 +21,43 @@ def get_db_connection():
     )
 
 
-@course_management_bp.route("/teacher-course", methods=["GET", "POST"])
+@course_management_bp.route("/teacher-course", methods=["POST"])
 def teacher_course():
 
-    if request.method == "POST":
+    course_name = request.form.get("course_name")
+    course_code = request.form.get("course_code")
+    teacher_id = session.get("teacher_id")
 
-        course_name = request.form.get("course_name")
-        course_code = request.form.get("course_code")
-        teacher_id = session.get("teacher_id")
+    if not teacher_id:
+        return redirect(url_for("teacher_login"))
 
-        if not all([course_name, course_code, teacher_id]):
-            return "All fields are required.", 400
+    if not all([course_name, course_code]):
+        return "All fields are required.", 400
 
-        conn = get_db_connection()
-        cursor = conn.cursor()
+    conn = get_db_connection()
+    cursor = conn.cursor()
 
-        try:
-            cursor.execute(
-                """
-                INSERT INTO courses
-                (course_name, course_code, teacher_id)
-                VALUES (%s, %s, %s)
-                """,
-                (course_name, course_code, teacher_id)
-            )
+    try:
+        cursor.execute(
+            """
+            INSERT INTO courses
+            (course_name, course_code, teacher_id)
+            VALUES (%s, %s, %s)
+            """,
+            (course_name, course_code, teacher_id)
+        )
 
-            conn.commit()
+        conn.commit()
 
-        except mysql.connector.Error as error:
-            conn.rollback()
-            return f"Database error: {error}", 500
+    except mysql.connector.Error as error:
+        conn.rollback()
+        return f"Database error: {error}", 500
 
-        finally:
-            cursor.close()
-            conn.close()
+    finally:
+        cursor.close()
+        conn.close()
 
-        return redirect(url_for("manage_courses"))
-
-    return render_template("teacher-course.html")
+    return redirect(url_for("manage_courses"))
 
 @course_management_bp.route("/delete-course/<int:course_id>", methods=["POST"])
 def delete_course(course_id):
