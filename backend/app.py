@@ -191,48 +191,24 @@ def mark_attendance():
     selected_date = None
 
     attendance_records = []
+    attendance_percentage = []
+
     view_course = None
     view_date = None
 
+    # -----------------------------
+    # MARK / VIEW ATTENDANCE
+    # -----------------------------
+
     if request.method == "POST":
 
-        # VIEW ATTENDANCE
+        course_id = request.form.get("course_id")
+        attendance_date = request.form.get("attendance_date")
 
-        if request.form.get("view_attendance"):
+        selected_date = attendance_date
 
-            view_course = request.form.get("view_course_id")
-            view_date = request.form.get("view_date")
-
-            cursor.execute(
-                """
-                SELECT
-                    s.name,
-                    s.roll_number,
-                    a.attendance_date,
-                    a.status
-                FROM attendance a
-                INNER JOIN students s
-                    ON a.student_id = s.student_id
-                INNER JOIN courses c
-                    ON a.course_id = c.course_id
-                WHERE a.course_id = %s
-                AND a.teacher_id = %s
-                AND a.attendance_date = %s
-                ORDER BY s.roll_number
-                """,
-                (view_course, teacher_id, view_date)
-            )
-
-            attendance_records = cursor.fetchall()
-
-        # MARK ATTENDANCE
-
-        else:
-
-            course_id = request.form.get("course_id")
-            attendance_date = request.form.get("attendance_date")
-
-            selected_date = attendance_date
+        # Check selected course belongs to teacher
+        if course_id:
 
             cursor.execute(
                 """
@@ -246,56 +222,173 @@ def mark_attendance():
 
             selected_course = cursor.fetchone()
 
-            if selected_course:
+        # -----------------------------
+        # GET ENROLLED STUDENTS
+        # -----------------------------
 
-                cursor.execute(
-                    """
-                    SELECT s.student_id, s.name, s.roll_number
-                    FROM students s
-                    INNER JOIN enrollments e
-                        ON s.student_id = e.student_id
-                    WHERE e.course_id = %s
-                    ORDER BY s.roll_number
-                    """,
-                    (course_id,)
+        if selected_course:
+
+            cursor.execute(
+                """
+                SELECT
+                    s.student_id,
+                    s.name,
+                    s.roll_number
+                FROM students s
+                INNER JOIN enrollments e
+                    ON s.student_id = e.student_id
+                WHERE e.course_id = %s
+                ORDER BY s.roll_number
+                """,
+                (course_id,)
+            )
+
+            students = cursor.fetchall()
+
+        # -----------------------------
+        # SAVE ATTENDANCE
+        # -----------------------------
+
+        if request.form.get("save_attendance"):
+
+            for student in students:
+
+                status = request.form.get(
+                    f"attendance_{student['student_id']}"
                 )
 
-                students = cursor.fetchall()
+                if status:
 
-                if request.form.get("save_attendance"):
-
-                    for student in students:
-
-                        status = request.form.get(
-                            f"attendance_{student['student_id']}"
+                    cursor.execute(
+                        """
+                        INSERT INTO attendance
+                        (
+                            student_id,
+                            course_id,
+                            teacher_id,
+                            attendance_date,
+                            status
                         )
+                        VALUES (%s, %s, %s, %s, %s)
 
-                        if status:
+                        ON DUPLICATE KEY UPDATE
+                        status = VALUES(status)
+                        """,
+                        (
+                            student["student_id"],
+                            course_id,
+                            teacher_id,
+                            attendance_date,
+                            status
+                        )
+                    )
 
-                            cursor.execute(
-                                """
-                                INSERT INTO attendance
-                                (student_id, course_id, teacher_id,
-                                 attendance_date, status)
-                                VALUES (%s, %s, %s, %s, %s)
-                                ON DUPLICATE KEY UPDATE
-                                status = VALUES(status)
-                                """,
-                                (
-                                    student["student_id"],
-                                    course_id,
-                                    teacher_id,
-                                    attendance_date,
-                                    status
-                                )
+            db.commit()
+
+            cursor.close()
+
+            flash(
+                "Attendance marked successfully!",
+                "success"
+            )
+
+            return redirect(url_for("mark_attendance"))
+
+        # -----------------------------
+        # VIEW ATTENDANCE
+        # -----------------------------
+
+        if request.form.get("view_attendance"):
+
+            view_course = request.form.get("view_course_id")
+            view_date = request.form.get("view_date")
+
+            # Attendance records for selected course/date
+            cursor.execute(
+                """
+                SELECT
+                    s.name,
+                    s.roll_number,
+                    a.attendance_date,
+                    a.status
+                FROM attendance a
+                INNER JOIN students s
+                    ON a.student_id = s.student_id
+                WHERE a.course_id = %s
+                AND a.teacher_id = %s
+                AND a.attendance_date = %s
+                ORDER BY s.roll_number
+                """,
+                (
+                    view_course,
+                    teacher_id,
+                    view_date
+                )
+            )
+
+            attendance_records = cursor.fetchall()
+
+            # -----------------------------
+            # ATTENDANCE PERCENTAGE
+            # -----------------------------
+
+            cursor.execute(
+                """
+                SELECT
+                    s.student_id,
+                    s.name,
+                    s.roll_number,
+
+                    COUNT(a.attendance_id) AS total_classes,
+
+                    SUM(
+                        CASE
+                            WHEN a.status = 'Present'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) AS present_classes,
+
+                    ROUND(
+                        (
+                            SUM(
+                                CASE
+                                    WHEN a.status = 'Present'
+                                    THEN 1
+                                    ELSE 0
+                                END
                             )
+                            / COUNT(a.attendance_id)
+                        ) * 100,
+                        2
+                    ) AS attendance_percentage
 
-                    db.commit()
+                FROM students s
 
-                    cursor.close()
-                    flash("Attendance marked successfully!", "success")
+                INNER JOIN enrollments e
+                    ON s.student_id = e.student_id
 
-                    return redirect(url_for("mark_attendance"))
+                LEFT JOIN attendance a
+                    ON s.student_id = a.student_id
+                    AND a.course_id = e.course_id
+                    AND a.teacher_id = %s
+
+                WHERE e.course_id = %s
+
+                GROUP BY
+                    s.student_id,
+                    s.name,
+                    s.roll_number
+
+                ORDER BY s.roll_number
+                """,
+                (
+                    teacher_id,
+                    view_course
+                )
+            )
+
+            attendance_percentage = cursor.fetchall()
 
     cursor.close()
 
@@ -307,7 +400,8 @@ def mark_attendance():
         selected_date=selected_date,
         attendance_records=attendance_records,
         view_course=view_course,
-        view_date=view_date
+        view_date=view_date,
+        attendance_percentage=attendance_percentage
     )
 
 @app.route("/student-dashboard")

@@ -7,8 +7,7 @@
 
     <title>Attendance Management</title>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
@@ -16,17 +15,17 @@
     <main class="dashboard-container">
 
         {% with messages = get_flashed_messages() %}
-             {% if messages %}
+        {% if messages %}
 
-                 {% for message in messages %}
+        {% for message in messages %}
 
-                     <div class="dashboard-card">
-                         <p><strong>{{ message }}</strong></p>
-                     </div>
+        <div class="dashboard-card">
+            <p><strong>{{ message }}</strong></p>
+        </div>
 
-                 {% endfor %}
+        {% endfor %}
 
-             {% endif %}
+        {% endif %}
         {% endwith %}
         <!-- MARK ATTENDANCE -->
 
@@ -48,16 +47,13 @@
 
                     {% for course in courses %}
 
-                        <option value="{{ course.course_id }}"
-                            {% if selected_course and
-                                  selected_course.course_id == course.course_id %}
-                                selected
-                            {% endif %}>
+                    <option value="{{ course.course_id }}" {% if selected_course and
+                        selected_course.course_id==course.course_id %} selected {% endif %}>
 
-                            {{ course.course_name }}
-                            ({{ course.course_code }})
+                        {{ course.course_name }}
+                        ({{ course.course_code }})
 
-                        </option>
+                    </option>
 
                     {% endfor %}
 
@@ -69,11 +65,8 @@
                     Attendance Date
                 </label>
 
-                <input type="date"
-                       name="attendance_date"
-                       id="attendance_date"
-                       value="{{ selected_date or '' }}"
-                       required>
+                <input type="date" name="attendance_date" id="attendance_date" value="{{ selected_date or '' }}"
+                    required>
 
                 <br><br>
 
@@ -104,13 +97,9 @@
 
             <form method="POST">
 
-                <input type="hidden"
-                       name="course_id"
-                       value="{{ selected_course.course_id }}">
+                <input type="hidden" name="course_id" value="{{ selected_course.course_id }}">
 
-                <input type="hidden"
-                       name="attendance_date"
-                       value="{{ selected_date }}">
+                <input type="hidden" name="attendance_date" value="{{ selected_date }}">
 
                 {% for student in students %}
 
@@ -124,18 +113,13 @@
                     </p>
 
                     <label>
-                        <input type="radio"
-                               name="attendance_{{ student.student_id }}"
-                               value="Present"
-                               required>
+                        <input type="radio" name="attendance_{{ student.student_id }}" value="Present" required>
 
                         Present
                     </label>
 
                     <label>
-                        <input type="radio"
-                               name="attendance_{{ student.student_id }}"
-                               value="Absent">
+                        <input type="radio" name="attendance_{{ student.student_id }}" value="Absent">
 
                         Absent
                     </label>
@@ -146,10 +130,7 @@
 
                 <br>
 
-                <button type="submit"
-                        name="save_attendance"
-                        value="1"
-                        class="btn-primary">
+                <button type="submit" name="save_attendance" value="1" class="btn-primary">
 
                     Save Attendance
 
@@ -159,9 +140,9 @@
 
             {% else %}
 
-                <p>
-                    No students are enrolled in this course yet.
-                </p>
+            <p>
+                No students are enrolled in this course yet.
+            </p>
 
             {% endif %}
 
@@ -182,9 +163,7 @@
                     Select Course
                 </label>
 
-                <select name="view_course_id"
-                        id="view_course_id"
-                        required>
+                <select name="view_course_id" id="view_course_id" required>
 
                     <option value="">
                         -- Select Course --
@@ -192,16 +171,13 @@
 
                     {% for course in courses %}
 
-                        <option value="{{ course.course_id }}"
-                            {% if view_course and
-                                  view_course|int == course.course_id %}
-                                selected
-                            {% endif %}>
+                    <option value="{{ course.course_id }}" {% if view_course and view_course|int==course.course_id %}
+                        selected {% endif %}>
 
-                            {{ course.course_name }}
-                            ({{ course.course_code }})
+                        {{ course.course_name }}
+                        ({{ course.course_code }})
 
-                        </option>
+                    </option>
 
                     {% endfor %}
 
@@ -213,18 +189,11 @@
                     Attendance Date
                 </label>
 
-                <input type="date"
-                       name="view_date"
-                       id="view_date"
-                       value="{{ view_date or '' }}"
-                       required>
+                <input type="date" name="view_date" id="view_date" value="{{ view_date or '' }}" required>
 
                 <br><br>
 
-                <button type="submit"
-                        name="view_attendance"
-                        value="1"
-                        class="btn-primary">
+                <button type="submit" name="view_attendance" value="1" class="btn-primary">
 
                     View Attendance
 
@@ -274,6 +243,64 @@
 
                         <td>
                             {{ record.status }}
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+        {% endif %}
+
+        {% if attendance_percentage %}
+
+        <section class="dashboard-card">
+
+            <h2>Attendance Percentage</h2>
+
+            <table>
+
+                <thead>
+
+                    <tr>
+                        <th>Student Name</th>
+                        <th>Roll Number</th>
+                        <th>Total Classes</th>
+                        <th>Present</th>
+                        <th>Attendance</th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for record in attendance_percentage %}
+
+                    <tr>
+
+                        <td>
+                            {{ record.name }}
+                        </td>
+
+                        <td>
+                            {{ record.roll_number }}
+                        </td>
+
+                        <td>
+                            {{ record.total_classes }}
+                        </td>
+
+                        <td>
+                            {{ record.present_classes }}
+                        </td>
+
+                        <td>
+                            {{ record.attendance_percentage }}%
                         </td>
 
                     </tr>
