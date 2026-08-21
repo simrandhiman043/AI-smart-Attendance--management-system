@@ -7,27 +7,40 @@
 
     <title>Attendance Management</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 
 <body>
 
     <main class="dashboard-container">
 
+
+        <!-- FLASH MESSAGE -->
+
         {% with messages = get_flashed_messages() %}
-        {% if messages %}
 
-        {% for message in messages %}
+            {% if messages %}
 
-        <div class="dashboard-card">
-            <p><strong>{{ message }}</strong></p>
-        </div>
+                {% for message in messages %}
 
-        {% endfor %}
+                    <div class="dashboard-card">
+                        <p>
+                            <strong>{{ message }}</strong>
+                        </p>
+                    </div>
 
-        {% endif %}
+                {% endfor %}
+
+            {% endif %}
+
         {% endwith %}
+
+
+
+        <!-- ========================= -->
         <!-- MARK ATTENDANCE -->
+        <!-- ========================= -->
 
         <section class="dashboard-card">
 
@@ -39,7 +52,11 @@
                     Select Course
                 </label>
 
-                <select name="course_id" id="course_id" required>
+                <select
+                    name="course_id"
+                    id="course_id"
+                    required
+                >
 
                     <option value="">
                         -- Select Course --
@@ -47,30 +64,51 @@
 
                     {% for course in courses %}
 
-                    <option value="{{ course.course_id }}" {% if selected_course and
-                        selected_course.course_id==course.course_id %} selected {% endif %}>
+                        <option
+                            value="{{ course.course_id }}"
 
-                        {{ course.course_name }}
-                        ({{ course.course_code }})
+                            {% if selected_course
+                                  and selected_course.course_id
+                                  == course.course_id %}
 
-                    </option>
+                                selected
+
+                            {% endif %}
+                        >
+
+                            {{ course.course_name }}
+                            ({{ course.course_code }})
+
+                        </option>
 
                     {% endfor %}
 
                 </select>
 
+
                 <br><br>
+
 
                 <label for="attendance_date">
                     Attendance Date
                 </label>
 
-                <input type="date" name="attendance_date" id="attendance_date" value="{{ selected_date or '' }}"
-                    required>
+                <input
+                    type="date"
+                    name="attendance_date"
+                    id="attendance_date"
+                    value="{{ selected_date or '' }}"
+                    required
+                >
+
 
                 <br><br>
 
-                <button type="submit" class="btn-primary">
+
+                <button
+                    type="submit"
+                    class="btn-primary"
+                >
                     Show Students
                 </button>
 
@@ -78,6 +116,11 @@
 
         </section>
 
+
+
+        <!-- ========================= -->
+        <!-- STUDENTS / MARK ATTENDANCE -->
+        <!-- ========================= -->
 
         {% if selected_course %}
 
@@ -88,7 +131,7 @@
             </h2>
 
             <p>
-                Course Code:
+                <strong>Course Code:</strong>
                 {{ selected_course.course_code }}
             </p>
 
@@ -97,52 +140,84 @@
 
             <form method="POST">
 
-                <input type="hidden" name="course_id" value="{{ selected_course.course_id }}">
+                <input
+                    type="hidden"
+                    name="course_id"
+                    value="{{ selected_course.course_id }}"
+                >
 
-                <input type="hidden" name="attendance_date" value="{{ selected_date }}">
+                <input
+                    type="hidden"
+                    name="attendance_date"
+                    value="{{ selected_date }}"
+                >
+
 
                 {% for student in students %}
 
                 <div class="course-item">
 
-                    <h3>{{ student.name }}</h3>
+                    <h3>
+                        {{ student.name }}
+                    </h3>
 
                     <p>
-                        Roll Number:
+                        <strong>Roll Number:</strong>
                         {{ student.roll_number }}
                     </p>
 
+
                     <label>
-                        <input type="radio" name="attendance_{{ student.student_id }}" value="Present" required>
+
+                        <input
+                            type="radio"
+                            name="attendance_{{ student.student_id }}"
+                            value="Present"
+                            required
+                        >
 
                         Present
+
                     </label>
 
+
                     <label>
-                        <input type="radio" name="attendance_{{ student.student_id }}" value="Absent">
+
+                        <input
+                            type="radio"
+                            name="attendance_{{ student.student_id }}"
+                            value="Absent"
+                        >
 
                         Absent
+
                     </label>
 
                 </div>
 
                 {% endfor %}
 
+
                 <br>
 
-                <button type="submit" name="save_attendance" value="1" class="btn-primary">
 
+                <button
+                    type="submit"
+                    name="save_attendance"
+                    value="1"
+                    class="btn-primary"
+                >
                     Save Attendance
-
                 </button>
 
             </form>
 
+
             {% else %}
 
-            <p>
-                No students are enrolled in this course yet.
-            </p>
+                <p>
+                    No students are enrolled in this course yet.
+                </p>
 
             {% endif %}
 
@@ -151,11 +226,14 @@
         {% endif %}
 
 
+
+        <!-- ========================= -->
         <!-- VIEW ATTENDANCE -->
+        <!-- ========================= -->
 
         <section class="dashboard-card">
 
-            <h1>View Attendance</h1>
+            <h2>View Attendance</h2>
 
             <form method="POST">
 
@@ -163,7 +241,11 @@
                     Select Course
                 </label>
 
-                <select name="view_course_id" id="view_course_id" required>
+                <select
+                    name="view_course_id"
+                    id="view_course_id"
+                    required
+                >
 
                     <option value="">
                         -- Select Course --
@@ -171,57 +253,83 @@
 
                     {% for course in courses %}
 
-                    <option value="{{ course.course_id }}" {% if view_course and view_course|int==course.course_id %}
-                        selected {% endif %}>
+                        <option value="{{ course.course_id }}">
 
-                        {{ course.course_name }}
-                        ({{ course.course_code }})
+                            {{ course.course_name }}
+                            ({{ course.course_code }})
 
-                    </option>
+                        </option>
 
                     {% endfor %}
 
                 </select>
 
+
                 <br><br>
+
 
                 <label for="view_date">
-                    Attendance Date
+                    Select Date
                 </label>
 
-                <input type="date" name="view_date" id="view_date" value="{{ view_date or '' }}" required>
+                <input
+                    type="date"
+                    name="view_date"
+                    id="view_date"
+                    required
+                >
+
 
                 <br><br>
 
-                <button type="submit" name="view_attendance" value="1" class="btn-primary">
 
+                <button
+                    type="submit"
+                    name="view_attendance"
+                    value="1"
+                    class="btn-primary"
+                >
                     View Attendance
-
                 </button>
 
             </form>
 
-        </section>
 
 
-        {% if attendance_records %}
+            <!-- ATTENDANCE RECORDS -->
 
-        <section class="dashboard-card">
+            {% if attendance_records %}
 
-            <h2>Attendance Records</h2>
+            <br>
+
+            <h3>Attendance Records</h3>
 
             <table>
 
                 <thead>
 
                     <tr>
-                        <th>Student Name</th>
-                        <th>Roll Number</th>
-                        <th>Date</th>
-                        <th>Status</th>
+
+                        <th>
+                            Student Name
+                        </th>
+
+                        <th>
+                            Roll Number
+                        </th>
+
+                        <th>
+                            Date
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
                     </tr>
 
                 </thead>
+
 
                 <tbody>
 
@@ -253,29 +361,55 @@
 
             </table>
 
+            {% endif %}
+
         </section>
 
-        {% endif %}
+
+
+        <!-- ========================= -->
+        <!-- ATTENDANCE PERCENTAGE -->
+        <!-- ========================= -->
 
         {% if attendance_percentage %}
 
         <section class="dashboard-card">
 
-            <h2>Attendance Percentage</h2>
+            <h2>
+                Attendance Percentage
+            </h2>
+
 
             <table>
 
                 <thead>
 
                     <tr>
-                        <th>Student Name</th>
-                        <th>Roll Number</th>
-                        <th>Total Classes</th>
-                        <th>Present</th>
-                        <th>Attendance</th>
+
+                        <th>
+                            Student Name
+                        </th>
+
+                        <th>
+                            Roll Number
+                        </th>
+
+                        <th>
+                            Total Classes
+                        </th>
+
+                        <th>
+                            Present
+                        </th>
+
+                        <th>
+                            Attendance
+                        </th>
+
                     </tr>
 
                 </thead>
+
 
                 <tbody>
 
@@ -314,6 +448,140 @@
         </section>
 
         {% endif %}
+
+
+
+        <!-- ========================= -->
+        <!-- ATTENDANCE HISTORY -->
+        <!-- ========================= -->
+
+        <section class="dashboard-card">
+
+            <h2>
+                Attendance History
+            </h2>
+
+
+            <form method="POST">
+
+                <label for="history_course_id">
+                    Select Course
+                </label>
+
+
+                <select
+                    name="history_course_id"
+                    id="history_course_id"
+                    required
+                >
+
+                    <option value="">
+                        -- Select Course --
+                    </option>
+
+
+                    {% for course in courses %}
+
+                        <option value="{{ course.course_id }}">
+
+                            {{ course.course_name }}
+                            ({{ course.course_code }})
+
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+
+                <br><br>
+
+
+                <button
+                    type="submit"
+                    name="view_history"
+                    value="1"
+                    class="btn-primary"
+                >
+                    View Attendance History
+                </button>
+
+            </form>
+
+
+
+            <!-- HISTORY RESULTS -->
+
+            {% if attendance_history %}
+
+            <br>
+
+            <h3>
+                Previous Attendance
+            </h3>
+
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Date
+                        </th>
+
+                        <th>
+                            Total Students
+                        </th>
+
+                        <th>
+                            Present
+                        </th>
+
+                        <th>
+                            Absent
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody>
+
+                    {% for record in attendance_history %}
+
+                    <tr>
+
+                        <td>
+                            {{ record.attendance_date }}
+                        </td>
+
+                        <td>
+                            {{ record.total_students }}
+                        </td>
+
+                        <td>
+                            {{ record.present_students }}
+                        </td>
+
+                        <td>
+                            {{ record.absent_students }}
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+            {% endif %}
+
+        </section>
+
 
     </main>
 

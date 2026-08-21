@@ -174,7 +174,7 @@ def mark_attendance():
 
     cursor = db.cursor(dictionary=True)
 
-    # Get courses of logged-in teacher
+    # Teacher ke courses
     cursor.execute(
         """
         SELECT course_id, course_name, course_code
@@ -196,9 +196,7 @@ def mark_attendance():
     view_course = None
     view_date = None
 
-    # -----------------------------
-    # MARK / VIEW ATTENDANCE
-    # -----------------------------
+    attendance_history = []
 
     if request.method == "POST":
 
@@ -207,7 +205,7 @@ def mark_attendance():
 
         selected_date = attendance_date
 
-        # Check selected course belongs to teacher
+        # Selected course verify
         if course_id:
 
             cursor.execute(
@@ -222,10 +220,7 @@ def mark_attendance():
 
             selected_course = cursor.fetchone()
 
-        # -----------------------------
-        # GET ENROLLED STUDENTS
-        # -----------------------------
-
+        # Enrolled students
         if selected_course:
 
             cursor.execute(
@@ -245,9 +240,9 @@ def mark_attendance():
 
             students = cursor.fetchall()
 
-        # -----------------------------
+        # --------------------------------
         # SAVE ATTENDANCE
-        # -----------------------------
+        # --------------------------------
 
         if request.form.get("save_attendance"):
 
@@ -294,16 +289,15 @@ def mark_attendance():
 
             return redirect(url_for("mark_attendance"))
 
-        # -----------------------------
+        # --------------------------------
         # VIEW ATTENDANCE
-        # -----------------------------
+        # --------------------------------
 
         if request.form.get("view_attendance"):
 
             view_course = request.form.get("view_course_id")
             view_date = request.form.get("view_date")
 
-            # Attendance records for selected course/date
             cursor.execute(
                 """
                 SELECT
@@ -328,10 +322,7 @@ def mark_attendance():
 
             attendance_records = cursor.fetchall()
 
-            # -----------------------------
-            # ATTENDANCE PERCENTAGE
-            # -----------------------------
-
+            # Attendance percentage
             cursor.execute(
                 """
                 SELECT
@@ -390,6 +381,54 @@ def mark_attendance():
 
             attendance_percentage = cursor.fetchall()
 
+        # --------------------------------
+        # ATTENDANCE HISTORY
+        # --------------------------------
+
+        if request.form.get("view_history"):
+
+            history_course = request.form.get("history_course_id")
+
+            cursor.execute(
+                """
+                SELECT
+                    a.attendance_date,
+
+                    COUNT(a.attendance_id) AS total_students,
+
+                    SUM(
+                        CASE
+                            WHEN a.status = 'Present'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) AS present_students,
+
+                    SUM(
+                        CASE
+                            WHEN a.status = 'Absent'
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) AS absent_students
+
+                FROM attendance a
+
+                WHERE a.course_id = %s
+                AND a.teacher_id = %s
+
+                GROUP BY a.attendance_date
+
+                ORDER BY a.attendance_date DESC
+                """,
+                (
+                    history_course,
+                    teacher_id
+                )
+            )
+
+            attendance_history = cursor.fetchall()
+
     cursor.close()
 
     return render_template(
@@ -401,7 +440,8 @@ def mark_attendance():
         attendance_records=attendance_records,
         view_course=view_course,
         view_date=view_date,
-        attendance_percentage=attendance_percentage
+        attendance_percentage=attendance_percentage,
+        attendance_history=attendance_history
     )
 
 @app.route("/student-dashboard")
