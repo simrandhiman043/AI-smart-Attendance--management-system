@@ -33,26 +33,287 @@ def home():
 
 @app.route("/student-login", methods=["GET", "POST"])
 def student_login():
+
     if request.method == "POST":
+
         email = request.form.get("email")
         password = request.form.get("password")
 
         cursor = db.cursor(dictionary=True)
 
         cursor.execute(
-            "SELECT * FROM students WHERE email = %s",
+            """
+            SELECT *
+            FROM students
+            WHERE email = %s
+            """,
             (email,)
         )
 
         student = cursor.fetchone()
+
         cursor.close()
 
-        if student and check_password_hash(student["password"], password):
-            return render_template("student-dashboard.html", student=student)
+        if student and check_password_hash(
+            student["password"],
+            password
+        ):
+
+            # Store logged-in student's ID in session
+            session["student_id"] = student["student_id"]
+
+            return redirect(
+                url_for("student_dashboard")
+            )
 
         return "Invalid email or password", 401
 
     return render_template("student-login.html")
+
+@app.route("/student-dashboard")
+def student_dashboard():
+
+    student_id = session.get("student_id")
+
+    if not student_id:
+        return redirect(url_for("student_login"))
+
+    cursor = db.cursor(dictionary=True)
+
+    # Student details
+    cursor.execute(
+        """
+        SELECT
+            student_id,
+            name,
+            email,
+            roll_number,
+            semester
+        FROM students
+        WHERE student_id = %s
+        """,
+        (student_id,)
+    )
+
+    student = cursor.fetchone()
+
+    if not student:
+        cursor.close()
+        return redirect(url_for("student_login"))
+
+    # Overall attendance
+    cursor.execute(
+        """
+        SELECT
+            COUNT(attendance_id) AS total_classes,
+            SUM(
+                CASE
+                    WHEN status = 'Present'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS present_classes,
+            SUM(
+                CASE
+                    WHEN status = 'Absent'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS absent_classes
+        FROM attendance
+        WHERE student_id = %s
+        """,
+        (student_id,)
+    )
+
+    overall = cursor.fetchone()
+
+    # Subject-wise attendance
+    cursor.execute(
+        """
+        SELECT
+            c.course_name AS subject,
+
+            COUNT(a.attendance_id) AS total_classes,
+
+            SUM(
+                CASE
+                    WHEN a.status = 'Present'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS present_classes,
+
+            SUM(
+                CASE
+                    WHEN a.status = 'Absent'
+                    THEN 1
+                    ELSE 0
+                END
+            ) AS absent_classes,
+
+            ROUND(
+                (
+                    SUM(
+                        CASE
+                            WHEN a.status = 'Present'
+                            THEN 1
+                            ELSE 0
+                        END
+                    )
+                    / COUNT(a.attendance_id)
+                ) * 100,
+                2
+            ) AS attendance_percentage
+
+        FROM attendance a
+
+        INNER JOIN courses c
+            ON a.course_id = c.course_id
+
+        WHERE a.student_id = %s
+
+        GROUP BY
+            c.course_id,
+            c.course_name
+
+        ORDER BY c.course_name
+        """,
+        (student_id,)
+    )
+
+    subject_attendance = cursor.fetchall()
+
+    cursor.close()
+
+    # Overall percentage
+    total_classes = overall["total_classes"] or 0
+    present_classes = overall["present_classes"] or 0
+    absent_classes = overall["absent_classes"] or 0
+
+    if total_classes > 0:
+        overall_percentage = round(
+            (present_classes / total_classes) * 100,
+            2
+        )
+    else:
+        overall_percentage = 0
+
+    return render_template(
+        "student-dashboard.html",
+        student=student,
+        total_classes=total_classes,
+        present_classes=present_classes,
+        absent_classes=absent_classes,
+        overall_percentage=overall_percentage,
+        subject_attendance=subject_attendance
+    )
+
+@app.route("/student-attendance", methods=["GET", "POST"])
+def student_attendance():
+
+    student_id = session.get("student_id")
+
+    if not student_id:
+        return redirect(url_for("student_login"))
+
+    cursor = db.cursor(dictionary=True)
+
+    # Get student's enrolled courses
+    cursor.execute(
+        """
+        SELECT
+            c.course_id,
+            c.course_name,
+            c.course_code
+        FROM courses c
+        INNER JOIN enrollments e
+            ON c.course_id = e.course_id
+        WHERE e.student_id = %s
+        ORDER BY c.course_name
+        """,
+        (student_id,)
+    )
+
+    courses = cursor.fetchall()
+
+    selected_course = None
+    attendance_records = []
+
+    total_classes = 0
+    present_classes = 0
+    absent_classes = 0
+    attendance_percentage = 0
+
+    if request.method == "POST":
+
+        course_id = request.form.get("course_id")
+
+        # Make sure the course belongs to this student
+        cursor.execute(
+            """
+            SELECT
+                c.course_id,
+                c.course_name,
+                c.course_code
+            FROM courses c
+            INNER JOIN enrollments e
+                ON c.course_id = e.course_id
+            WHERE c.course_id = %s
+            AND e.student_id = %s
+            """,
+            (course_id, student_id)
+        )
+
+        selected_course = cursor.fetchone()
+
+        if selected_course:
+
+            # Attendance records
+            cursor.execute(
+                """
+                SELECT
+                    attendance_date,
+                    status
+                FROM attendance
+                WHERE student_id = %s
+                AND course_id = %s
+                ORDER BY attendance_date DESC
+                """,
+                (student_id, course_id)
+            )
+
+            attendance_records = cursor.fetchall()
+
+            total_classes = len(attendance_records)
+
+            for record in attendance_records:
+
+                if record["status"] == "Present":
+                    present_classes += 1
+
+                elif record["status"] == "Absent":
+                    absent_classes += 1
+
+            if total_classes > 0:
+
+                attendance_percentage = round(
+                    (present_classes / total_classes) * 100,
+                    2
+                )
+
+    cursor.close()
+
+    return render_template(
+        "student-attendance.html",
+        courses=courses,
+        selected_course=selected_course,
+        attendance_records=attendance_records,
+        total_classes=total_classes,
+        present_classes=present_classes,
+        absent_classes=absent_classes,
+        attendance_percentage=attendance_percentage
+    )
 
 @app.route("/teacher-login", methods=["GET", "POST"])
 def teacher_login():
@@ -444,9 +705,6 @@ def mark_attendance():
         attendance_history=attendance_history
     )
 
-@app.route("/student-dashboard")
-def student_dashboard():  
-    return render_template("student-dashboard.html")  
 
 
 @app.route('/student-register')

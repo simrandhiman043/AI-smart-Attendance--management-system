@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>
+        My Attendance | AI Smart Attendance Management System
+    </title>
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+</head>
+
+
+<body>
+
+    <header class="navbar">
+
+        <div class="logo">
+            AI Attendance System
+        </div>
+
+        <nav>
+
+            <ul class="nav-links">
+
+                <li>
+                    <a href="{{ url_for('home') }}">
+                        Home
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ url_for('student_dashboard') }}">
+                        Dashboard
+                    </a>
+                </li>
+
+            </ul>
+
+        </nav>
+
+    </header>
+
+    <main class="dashboard-container">
+
+
+        <section class="dashboard-header">
+
+            <h1>
+                My Attendance
+            </h1>
+
+            <p>
+                View your course-wise attendance.
+            </p>
+
+        </section>
+
+        <section class="dashboard-card">
+
+            <h2>
+                Select Course
+            </h2>
+
+
+            <form method="POST">
+
+                <label for="course_id">
+                    Course
+                </label>
+
+
+                <select
+                    name="course_id"
+                    id="course_id"
+                    required
+                >
+
+                    <option value="">
+                        -- Select Course --
+                    </option>
+
+
+                    {% for course in courses %}
+
+                        <option
+                            value="{{ course.course_id }}"
+
+                            {% if selected_course
+                                  and selected_course.course_id
+                                  == course.course_id %}
+
+                                selected
+
+                            {% endif %}
+                        >
+
+                            {{ course.course_name }}
+                            ({{ course.course_code }})
+
+                        </option>
+
+                    {% endfor %}
+
+                </select>
+
+
+                <br><br>
+
+
+                <button
+                    type="submit"
+                    class="btn-primary"
+                >
+                    View Attendance
+                </button>
+
+            </form>
+
+        </section>
+
+        {% if selected_course %}
+
+        <section class="dashboard-card">
+
+            <h2>
+                {{ selected_course.course_name }}
+            </h2>
+
+            <p>
+                <strong>Course Code:</strong>
+                {{ selected_course.course_code }}
+            </p>
+
+
+            <div class="attendance-summary">
+
+
+                <div class="attendance-box">
+
+                    <h3>
+                        Total Classes
+                    </h3>
+
+                    <p>
+                        {{ total_classes }}
+                    </p>
+
+                </div>
+
+
+                <div class="attendance-box">
+
+                    <h3>
+                        Present
+                    </h3>
+
+                    <p>
+                        {{ present_classes }}
+                    </p>
+
+                </div>
+
+
+                <div class="attendance-box">
+
+                    <h3>
+                        Absent
+                    </h3>
+
+                    <p>
+                        {{ absent_classes }}
+                    </p>
+
+                </div>
+
+
+                <div class="attendance-box">
+
+                    <h3>
+                        Attendance
+                    </h3>
+
+                    <p>
+                        {{ attendance_percentage }}%
+                    </p>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+        {% endif %}
+
+
+        {% if attendance_records %}
+
+        <section class="dashboard-card">
+
+            <h2>
+                Attendance Records
+            </h2>
+
+
+            <div class="attendance-table">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>
+                                Date
+                            </th>
+
+                            <th>
+                                Status
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+
+                    <tbody>
+
+                        {% for record in attendance_records %}
+
+                        <tr>
+
+                            <td>
+                                {{ record.attendance_date }}
+                            </td>
+
+                            <td>
+                                {{ record.status }}
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </section>
+
+        {% endif %}
+
+        <section class="dashboard-card">
+
+            <div class="dashboard-actions">
+
+                <a
+                    href="{{ url_for('student_dashboard') }}"
+                    class="btn-secondary"
+                >
+                    Back to Dashboard
+                </a>
+
+            </div>
+
+        </section>
+
+
+    </main>
+
+    <footer class="footer">
+
+        <p>
+            &copy; 2026 AI Smart Attendance Management System.
+            All rights reserved.
+        </p>
+
+    </footer>
+
+
+</body>
+
+</html>
