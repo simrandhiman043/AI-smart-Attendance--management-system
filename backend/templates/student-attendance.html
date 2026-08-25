@@ -20,6 +20,7 @@
 
 <body>
 
+
     <header class="navbar">
 
         <div class="logo">
@@ -42,14 +43,23 @@
                     </a>
                 </li>
 
+                <li>
+                    <a href="{{ url_for('student_logout') }}">
+                        Logout
+                    </a>
+                </li>
+
             </ul>
 
         </nav>
 
     </header>
 
+
+
     <main class="dashboard-container">
 
+        <!-- Page Header -->
 
         <section class="dashboard-header">
 
@@ -58,24 +68,26 @@
             </h1>
 
             <p>
-                View your course-wise attendance.
+                View your course-wise attendance and history.
             </p>
 
         </section>
 
+        <!-- Course + Date Filter -->
+
         <section class="dashboard-card">
 
             <h2>
-                Select Course
+                Attendance Filter
             </h2>
 
 
             <form method="POST">
 
-                <label for="course_id">
-                    Course
-                </label>
 
+                <label for="course_id">
+                    Select Course
+                </label>
 
                 <select
                     name="course_id"
@@ -115,6 +127,36 @@
                 <br><br>
 
 
+                <label for="from_date">
+                    From Date
+                </label>
+
+                <input
+                    type="date"
+                    name="from_date"
+                    id="from_date"
+                    value="{{ selected_from_date }}"
+                >
+
+
+                <br><br>
+
+
+                <label for="to_date">
+                    To Date
+                </label>
+
+                <input
+                    type="date"
+                    name="to_date"
+                    id="to_date"
+                    value="{{ selected_to_date }}"
+                >
+
+
+                <br><br>
+
+
                 <button
                     type="submit"
                     class="btn-primary"
@@ -122,11 +164,16 @@
                     View Attendance
                 </button>
 
+
             </form>
 
         </section>
 
+
+
         {% if selected_course %}
+
+        <!-- Attendance Summary -->
 
         <section class="dashboard-card">
 
@@ -199,66 +246,82 @@
 
         </section>
 
-        {% endif %}
-
-
-        {% if attendance_records %}
+        <!-- Attendance History -->
 
         <section class="dashboard-card">
 
             <h2>
-                Attendance Records
+                Attendance History
             </h2>
 
 
-            <div class="attendance-table">
-
-                <table>
-
-                    <thead>
-
-                        <tr>
-
-                            <th>
-                                Date
-                            </th>
-
-                            <th>
-                                Status
-                            </th>
-
-                        </tr>
-
-                    </thead>
+            {% if attendance_records %}
 
 
-                    <tbody>
+                <div class="attendance-table">
 
-                        {% for record in attendance_records %}
+                    <table>
 
-                        <tr>
+                        <thead>
 
-                            <td>
-                                {{ record.attendance_date }}
-                            </td>
+                            <tr>
 
-                            <td>
-                                {{ record.status }}
-                            </td>
+                                <th>
+                                    Date
+                                </th>
 
-                        </tr>
+                                <th>
+                                    Status
+                                </th>
 
-                        {% endfor %}
+                            </tr>
 
-                    </tbody>
+                        </thead>
 
-                </table>
 
-            </div>
+                        <tbody>
+
+
+                            {% for record in attendance_records %}
+
+                            <tr>
+
+                                <td>
+                                    {{ record.attendance_date }}
+                                </td>
+
+                                <td>
+                                    {{ record.status }}
+                                </td>
+
+                            </tr>
+
+                            {% endfor %}
+
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+
+            {% else %}
+
+                <p>
+                    No attendance records found for the selected course
+                    and date range.
+                </p>
+
+            {% endif %}
+
 
         </section>
 
+
         {% endif %}
+
+        <!-- Back to Dashboard -->
 
         <section class="dashboard-card">
 
@@ -277,6 +340,8 @@
 
 
     </main>
+
+
 
     <footer class="footer">
 

@@ -31,6 +31,11 @@ db = mysql.connector.connect(
 def home():
     return render_template("index.html")
 
+@app.route('/student-register')
+def student_register():
+    return render_template('student-register.html')
+
+
 @app.route("/student-login", methods=["GET", "POST"])
 def student_login():
 
@@ -58,7 +63,6 @@ def student_login():
             student["password"],
             password
         ):
-
             # Store logged-in student's ID in session
             session["student_id"] = student["student_id"]
 
@@ -209,6 +213,13 @@ def student_dashboard():
         subject_attendance=subject_attendance
     )
 
+@app.route("/student-logout")
+def student_logout():
+
+    session.pop("student_id", None)
+
+    return redirect(url_for("student_login"))
+
 @app.route("/student-attendance", methods=["GET", "POST"])
 def student_attendance():
 
@@ -245,11 +256,17 @@ def student_attendance():
     absent_classes = 0
     attendance_percentage = 0
 
+    selected_from_date = ""
+    selected_to_date = ""
+
     if request.method == "POST":
 
         course_id = request.form.get("course_id")
 
-        # Make sure the course belongs to this student
+        selected_from_date = request.form.get("from_date") or ""
+        selected_to_date = request.form.get("to_date") or ""
+
+        # Verify selected course belongs to logged-in student
         cursor.execute(
             """
             SELECT
@@ -269,22 +286,48 @@ def student_attendance():
 
         if selected_course:
 
-            # Attendance records
-            cursor.execute(
-                """
+            # Base attendance query
+            attendance_query = """
                 SELECT
                     attendance_date,
                     status
                 FROM attendance
                 WHERE student_id = %s
                 AND course_id = %s
+            """
+
+            query_params = [student_id, course_id]
+
+            # From date filter
+            if selected_from_date:
+
+                attendance_query += """
+                    AND attendance_date >= %s
+                """
+
+                query_params.append(selected_from_date)
+
+            # To date filter
+            if selected_to_date:
+
+                attendance_query += """
+                    AND attendance_date <= %s
+                """
+
+                query_params.append(selected_to_date)
+
+            attendance_query += """
                 ORDER BY attendance_date DESC
-                """,
-                (student_id, course_id)
+            """
+
+            cursor.execute(
+                attendance_query,
+                tuple(query_params)
             )
 
             attendance_records = cursor.fetchall()
 
+            # Calculate summary
             total_classes = len(attendance_records)
 
             for record in attendance_records:
@@ -312,8 +355,15 @@ def student_attendance():
         total_classes=total_classes,
         present_classes=present_classes,
         absent_classes=absent_classes,
-        attendance_percentage=attendance_percentage
+        attendance_percentage=attendance_percentage,
+        selected_from_date=selected_from_date,
+        selected_to_date=selected_to_date
     )
+
+@app.route("/teacher-register")
+def teacher_register():
+    return render_template("teacher-register.html")
+
 
 @app.route("/teacher-login", methods=["GET", "POST"])
 def teacher_login():
@@ -501,9 +551,7 @@ def mark_attendance():
 
             students = cursor.fetchall()
 
-        # --------------------------------
         # SAVE ATTENDANCE
-        # --------------------------------
 
         if request.form.get("save_attendance"):
 
@@ -550,9 +598,7 @@ def mark_attendance():
 
             return redirect(url_for("mark_attendance"))
 
-        # --------------------------------
         # VIEW ATTENDANCE
-        # --------------------------------
 
         if request.form.get("view_attendance"):
 
@@ -642,9 +688,7 @@ def mark_attendance():
 
             attendance_percentage = cursor.fetchall()
 
-        # --------------------------------
         # ATTENDANCE HISTORY
-        # --------------------------------
 
         if request.form.get("view_history"):
 
@@ -704,16 +748,6 @@ def mark_attendance():
         attendance_percentage=attendance_percentage,
         attendance_history=attendance_history
     )
-
-
-
-@app.route('/student-register')
-def student_register():
-    return render_template('student-register.html')
-
-@app.route("/teacher-register")
-def teacher_register():
-    return render_template("teacher-register.html")
 
 @app.route("/teacher-course")
 def teacher_course():
