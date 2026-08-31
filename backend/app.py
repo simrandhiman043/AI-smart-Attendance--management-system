@@ -1,5 +1,5 @@
 # Main Flask application
-from flask import Flask, render_template, request, redirect, url_for,session, flash
+from flask import Flask, render_template, request, redirect, url_for,session, flash, jsonify
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -753,7 +753,111 @@ def mark_attendance():
 def teacher_course():
     return render_template("teacher-course.html")
 
+@app.route("/assistant")
+def assistant():
 
+    if not session.get("student_id") and not session.get("teacher_id"):
+        return redirect(url_for("home"))
+
+    return render_template("assistant.html")
+
+@app.route("/assistant/ask", methods=["POST"])
+def assistant_ask():
+
+    message = request.form.get("message", "").strip()
+
+    if not message:
+        return jsonify({
+            "response": "Please ask me something about your attendance."
+        })
+
+
+    # Check if student is logged in
+    student_id = session.get("student_id")
+
+    if student_id:
+
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute(
+            """
+            SELECT
+                COUNT(attendance_id) AS total_classes,
+
+                SUM(
+                    CASE
+                        WHEN status = 'Present'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS present_classes,
+
+                SUM(
+                    CASE
+                        WHEN status = 'Absent'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS absent_classes
+
+            FROM attendance
+
+            WHERE student_id = %s
+            """,
+            (student_id,)
+        )
+
+        attendance = cursor.fetchone()
+
+        cursor.close()
+
+
+        total_classes = attendance["total_classes"] or 0
+        present_classes = attendance["present_classes"] or 0
+        absent_classes = attendance["absent_classes"] or 0
+
+
+        if total_classes > 0:
+
+            percentage = round(
+                (present_classes / total_classes) * 100,
+                2
+            )
+
+            response = (
+                f"Your overall attendance is {percentage}%. "
+                f"You have attended {present_classes} "
+                f"out of {total_classes} classes "
+                f"and were absent for {absent_classes} classes."
+            )
+
+        else:
+
+            response = (
+                "No attendance records are available for you yet."
+            )
+
+
+        return jsonify({
+            "response": response
+        })
+
+
+    # Check if teacher is logged in
+    teacher_id = session.get("teacher_id")
+
+    if teacher_id:
+
+        return jsonify({
+            "response":
+                "Teacher attendance queries will be added next."
+        })
+
+
+    # No user logged in
+    return jsonify({
+        "response": "Please login first."
+    }), 401
 
 if __name__ == "__main__":
     app.run(debug=True)
