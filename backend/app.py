@@ -1,5 +1,6 @@
 # Main Flask application
 from flask import Flask, render_template, request, redirect, url_for,session, flash, jsonify
+from google import genai
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -25,6 +26,10 @@ db = mysql.connector.connect(
     database=os.getenv("MYSQL_DATABASE"),
     use_pure=True,
     autocommit=True
+)
+
+client = genai.Client(
+    api_key=os.getenv("GEMINI_API_KEY")
 )
 
 @app.route("/")
@@ -768,25 +773,26 @@ def assistant_ask():
 
     if not message:
         return jsonify({
-            "response": "Please ask me something about your attendance."
+            "response": "Please ask me something about attendance."
         })
 
+    # STUDENT ASSISTANT
 
-    # Check if student is logged in
     student_id = session.get("student_id")
 
     if student_id:
 
         cursor = db.cursor(dictionary=True)
 
+        # Get student's attendance summary
         cursor.execute(
             """
             SELECT
-                COUNT(attendance_id) AS total_classes,
+                COUNT(a.attendance_id) AS total_classes,
 
                 SUM(
                     CASE
-                        WHEN status = 'Present'
+                        WHEN a.status = 'Present'
                         THEN 1
                         ELSE 0
                     END
@@ -794,71 +800,286 @@ def assistant_ask():
 
                 SUM(
                     CASE
-                        WHEN status = 'Absent'
+                        WHEN a.status = 'Absent'
                         THEN 1
                         ELSE 0
                     END
                 ) AS absent_classes
 
-            FROM attendance
+            FROM attendance a
 
-            WHERE student_id = %s
+            WHERE a.student_id = %s
             """,
             (student_id,)
         )
 
-        attendance = cursor.fetchone()
+        overall = cursor.fetchone()
+
+        # Get subject-wise attendance
+        cursor.execute(
+            """
+            SELECT
+                c.course_name AS subject,
+
+                COUNT(a.attendance_id) AS total_classes,
+
+                SUM(
+                    CASE
+                        WHEN a.status = 'Present'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS present_classes,
+
+                SUM(
+                    CASE
+                        WHEN a.status = 'Absent'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS absent_classes,
+
+                ROUND(
+                    (
+                        SUM(
+                            CASE
+                                WHEN a.status = 'Present'
+                                THEN 1
+                                ELSE 0
+                            END
+                        )
+                        / COUNT(a.attendance_id)
+                    ) * 100,
+                    2
+                ) AS attendance_percentage
+
+            FROM attendance a
+
+            INNER JOIN courses c
+                ON a.course_id = c.course_id
+
+            WHERE a.student_id = %s
+
+            GROUP BY c.course_id, c.course_name
+
+            ORDER BY c.course_name
+            """,
+            (student_id,)
+        )
+
+        subject_attendance = cursor.fetchall()
+
+        # Get attendance history
+        cursor.execute(
+            """
+            SELECT
+                c.course_name AS subject,
+                a.attendance_date,
+                a.status
+
+            FROM attendance a
+
+            INNER JOIN courses c
+                ON a.course_id = c.course_id
+
+            WHERE a.student_id = %s
+
+            ORDER BY a.attendance_date DESC
+            """,
+            (student_id,)
+        )
+
+        attendance_history = cursor.fetchall()
 
         cursor.close()
 
-
-        total_classes = attendance["total_classes"] or 0
-        present_classes = attendance["present_classes"] or 0
-        absent_classes = attendance["absent_classes"] or 0
-
+        total_classes = overall["total_classes"] or 0
+        present_classes = overall["present_classes"] or 0
+        absent_classes = overall["absent_classes"] or 0
 
         if total_classes > 0:
-
-            percentage = round(
+            overall_percentage = round(
                 (present_classes / total_classes) * 100,
                 2
             )
-
-            response = (
-                f"Your overall attendance is {percentage}%. "
-                f"You have attended {present_classes} "
-                f"out of {total_classes} classes "
-                f"and were absent for {absent_classes} classes."
-            )
-
         else:
+            overall_percentage = 0
 
-            response = (
-                "No attendance records are available for you yet."
+        attendance_data = f"""
+        Overall Attendance:
+        Total classes: {total_classes}
+        Present classes: {present_classes}
+        Absent classes: {absent_classes}
+        Overall percentage: {overall_percentage}%
+
+        Subject-wise Attendance:
+        {subject_attendance}
+
+        Attendance History:
+        {attendance_history}
+        """
+
+        prompt = f"""
+        You are the AI Assistant of an AI Smart Attendance Management System.
+
+        The logged-in user is a STUDENT.
+
+        Answer the student's question using ONLY the attendance data
+        provided below.
+
+        Student Attendance Data:
+        {attendance_data}
+
+        Student Question:
+        {message}
+
+        Rules:
+        1. Give a simple and clear answer.
+        2. Do not make up attendance information.
+        3. For subject-wise questions, use the subject-wise data.
+        4. For history questions, use the attendance history.
+        5. If the student asks about their lowest or highest attendance,
+           compare the subject-wise percentages.
+        6. If the student asks whether their attendance is good,
+           explain their percentage clearly.
+        7. If the question is unrelated to attendance,
+           politely say that you mainly help with attendance-related queries.
+        """
+
+        try:
+
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt
             )
 
+            return jsonify({
+                "response": response.text
+            })
 
-        return jsonify({
-            "response": response
-        })
+        except Exception as e:
 
+            print("Gemini Error:", e)
 
-    # Check if teacher is logged in
+            return jsonify({
+                "response":
+                    "Sorry, I could not connect to the AI Assistant right now."
+            }), 500
+
+    # TEACHER ASSISTANT
+
     teacher_id = session.get("teacher_id")
 
     if teacher_id:
 
-        return jsonify({
-            "response":
-                "Teacher attendance queries will be added next."
-        })
+        cursor = db.cursor(dictionary=True)
 
+        # Get teacher's courses
+        cursor.execute(
+            """
+            SELECT
+                course_id,
+                course_name,
+                course_code
 
-    # No user logged in
+            FROM courses
+
+            WHERE teacher_id = %s
+
+            ORDER BY course_name
+            """,
+            (teacher_id,)
+        )
+
+        courses = cursor.fetchall()
+
+        # Get attendance data for teacher's courses
+        cursor.execute(
+            """
+            SELECT
+                c.course_name AS subject,
+                c.course_code,
+                s.name AS student_name,
+                s.roll_number,
+                a.attendance_date,
+                a.status
+
+            FROM attendance a
+
+            INNER JOIN courses c
+                ON a.course_id = c.course_id
+
+            INNER JOIN students s
+                ON a.student_id = s.student_id
+
+            WHERE a.teacher_id = %s
+
+            ORDER BY a.attendance_date DESC
+            """,
+            (teacher_id,)
+        )
+
+        teacher_attendance = cursor.fetchall()
+
+        cursor.close()
+
+        teacher_data = f"""
+        Teacher's Courses:
+        {courses}
+
+        Attendance Records:
+        {teacher_attendance}
+        """
+
+        prompt = f"""
+        You are the AI Assistant of an AI Smart Attendance Management System.
+
+        The logged-in user is a TEACHER.
+
+        Answer the teacher's question using ONLY the data provided below.
+
+        Teacher Data:
+        {teacher_data}
+
+        Teacher Question:
+        {message}
+
+        Rules:
+        1. Give a simple and clear answer.
+        2. Do not make up student, course or attendance information.
+        3. For course questions, use the teacher's course data.
+        4. For student attendance questions, use the attendance records.
+        5. For low attendance questions, identify students with attendance
+           below 75% when enough data is available.
+        6. For date-wise questions, use the attendance date.
+        7. If the question is unrelated to attendance or the teacher's
+           courses, politely say that you mainly help with attendance
+           management queries.
+        """
+
+        try:
+
+            response = client.models.generate_content(
+                model="gemini-3.6-flash",
+                contents=prompt
+            )
+
+            return jsonify({
+                "response": response.text
+            })
+
+        except Exception as e:
+
+            print("Gemini Error:", e)
+
+            return jsonify({
+                "response":
+                    "Sorry, I could not connect to the AI Assistant right now."
+            }), 500
+
     return jsonify({
         "response": "Please login first."
     }), 401
-
 if __name__ == "__main__":
     app.run(debug=True)
 
