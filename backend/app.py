@@ -1,6 +1,7 @@
 # Main Flask application
 from flask import Flask, render_template, request, redirect, url_for,session, flash, jsonify
 from google import genai
+from datetime import date
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -1028,7 +1029,12 @@ def assistant_ask():
 
         cursor.close()
 
+        today = date.today()
+
         teacher_data = f"""
+        Today's Date:
+        {today}
+
         Teacher's Courses:
         {courses}
 
@@ -1060,6 +1066,8 @@ def assistant_ask():
         7. If the question is unrelated to attendance or the teacher's
            courses, politely say that you mainly help with attendance
            management queries.
+        8. When the teacher asks about today's attendance, use Today's Date provided above
+           and match it with the attendance_date in the records.
         """
 
         try:
