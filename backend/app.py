@@ -431,6 +431,11 @@ def teacher_dashboard():
         courses=courses
     )
 
+@app.route("/teacher-logout")
+def teacher_logout():
+    session.pop("teacher_id", None)
+    return redirect(url_for("teacher_login"))
+
 
 @app.route("/manage-courses")
 def manage_courses():
