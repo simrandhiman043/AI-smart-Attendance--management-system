@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -45,26 +46,71 @@
             <h2>My Courses</h2>
 
             {% if courses %}
-                {% for course in courses %}
-                    <div class="course-item">
-                        <h3>{{ course.course_name }}</h3>
-                        <p>Course Code: {{ course.course_code }}</p>
-                    </div>
-                {% endfor %}
+            {% for course in courses %}
+            <div class="course-item">
+                <h3>{{ course.course_name }}</h3>
+                <p>Course Code: {{ course.course_code }}</p>
+            </div>
+            {% endfor %}
             {% else %}
-                <p>No courses added yet.</p>
+            <p>No courses added yet.</p>
             {% endif %}
-        </section>        
+        </section>
 
         <section class="dashboard-card">
             <h2>Attendance Management</h2>
 
             <div class="dashboard-actions">
                 <a href="{{ url_for('mark_attendance') }}" class="btn-primary">
-                           Mark Attendance
+                    Mark Attendance
                 </a>
-                
+
             </div>
+        </section>
+
+        <section class="dashboard-card">
+            <h2>Student Enrollment</h2>
+
+            <form method="POST" action="{{ url_for('manage_enrollments') }}">
+
+                <label for="course_id"><strong>Select Course:</strong></label>
+
+                <select name="course_id" id="course_id" required>
+                    <option value="">-- Select Course --</option>
+
+                    {% for course in courses %}
+                    <option value="{{ course.course_id }}">
+                        {{ course.course_name }} ({{ course.course_code }})
+                    </option>
+                    {% endfor %}
+                </select>
+
+                <br><br>
+
+                <label><strong>Select Students:</strong></label>
+
+                {% if students %}
+                {% for student in students %}
+                <div>
+                    <label>
+                        <input type="checkbox" name="student_ids" value="{{ student.student_id }}">
+
+                        {{ student.name }}
+                        ({{ student.roll_number }})
+                    </label>
+                </div>
+                {% endfor %}
+                {% else %}
+                <p>No students registered yet.</p>
+                {% endif %}
+
+                <br>
+
+                <button type="submit" class="btn-primary">
+                    Enroll Selected Students
+                </button>
+
+            </form>
         </section>
 
 
@@ -86,4 +132,5 @@
     </footer>
 
 </body>
+
 </html>

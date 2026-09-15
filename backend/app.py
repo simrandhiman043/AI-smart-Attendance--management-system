@@ -2,6 +2,7 @@
 from flask import Flask, render_template, request, redirect, url_for,session, flash, jsonify
 from google import genai
 from datetime import date
+from flask_mail import Mail, Message
 import mysql.connector
 from dotenv import load_dotenv
 import os
@@ -11,6 +12,36 @@ from routes.course_management import course_management_bp
 from werkzeug.security import check_password_hash
 
 app = Flask(__name__)
+
+app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
+app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
+app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
+app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
+app.config["MAIL_USE_TLS"] = True
+mail = Mail(app)
+def send_low_attendance_email(student_name, student_email, subject, attendance_percentage):
+
+    msg = Message(
+        subject="Low Attendance Alert - AI Smart Attendance System",
+        sender=os.getenv("MAIL_USERNAME"),
+        recipients=[student_email]
+    )
+
+    msg.body = f"""
+Hello {student_name},
+
+Your attendance in {subject} is currently {attendance_percentage}%.
+
+This is below the required 75% attendance.
+
+Please attend upcoming classes regularly to improve your attendance.
+
+Regards,
+AI Smart Attendance Management System
+"""
+
+    mail.send(msg)
+
 app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key")
 app.secret_key = "ai-attendance-secret-key-2026"
 load_dotenv()  # Load environment variables from .env file
@@ -424,13 +455,75 @@ def teacher_dashboard():
     )
 
     courses = cursor.fetchall()
+
+    cursor.execute(
+        """
+        SELECT student_id, name, email, roll_number, semester
+        FROM students
+        ORDER BY name
+        """
+    )
+
+    students = cursor.fetchall()
+
     cursor.close()
 
     return render_template(
         "teacher-dashboard.html",
         teacher=teacher,
-        courses=courses
+        courses=courses,
+        students=students
     )
+
+@app.route("/manage-enrollments", methods=["POST"])
+def manage_enrollments():
+
+    teacher_id = session.get("teacher_id")
+
+    if not teacher_id:
+        return redirect(url_for("teacher_login"))
+
+    course_id = request.form.get("course_id")
+    student_ids = request.form.getlist("student_ids")
+
+    if not course_id or not student_ids:
+        return redirect(url_for("teacher_dashboard"))
+
+    cursor = db.cursor()
+
+    # Make sure the selected course belongs to the logged-in teacher
+    cursor.execute(
+        """
+        SELECT course_id
+        FROM courses
+        WHERE course_id = %s
+        AND teacher_id = %s
+        """,
+        (course_id, teacher_id)
+    )
+
+    course = cursor.fetchone()
+
+    if not course:
+        cursor.close()
+        return redirect(url_for("teacher_dashboard"))
+
+    # Enroll selected students
+    for student_id in student_ids:
+
+        cursor.execute(
+            """
+            INSERT IGNORE INTO enrollments
+            (student_id, course_id)
+            VALUES (%s, %s)
+            """,
+            (student_id, course_id)
+        )
+
+    db.commit()
+    cursor.close()
+
+    return redirect(url_for("teacher_dashboard"))
 
 @app.route("/teacher-logout")
 def teacher_logout():
@@ -599,48 +692,102 @@ def mark_attendance():
                     )
 
             db.commit()
+            
+            # Check for low attendance and send email notification
 
-            cursor.close()
+            for student in students:
 
-            flash(
-                "Attendance marked successfully!",
-                "success"
-            )
-
-            return redirect(url_for("mark_attendance"))
-
-        # VIEW ATTENDANCE
-
-        if request.form.get("view_attendance"):
-
-            view_course = request.form.get("view_course_id")
-            view_date = request.form.get("view_date")
-
-            cursor.execute(
-                """
-                SELECT
-                    s.name,
-                    s.roll_number,
-                    a.attendance_date,
-                    a.status
-                FROM attendance a
-                INNER JOIN students s
-                    ON a.student_id = s.student_id
-                WHERE a.course_id = %s
-                AND a.teacher_id = %s
-                AND a.attendance_date = %s
-                ORDER BY s.roll_number
-                """,
-                (
-                    view_course,
-                    teacher_id,
-                    view_date
+                cursor.execute(
+                    """
+                    SELECT
+                        COUNT(attendance_id) AS total_classes,
+                        SUM(
+                            CASE
+                                WHEN status = 'Present'
+                                THEN 1
+                                ELSE 0
+                            END
+                        ) AS present_classes
+                    FROM attendance
+                    WHERE student_id = %s
+                    AND course_id = %s
+                    """,
+                    (
+                        student["student_id"],
+                        course_id
+                    )
                 )
-            )
 
-            attendance_records = cursor.fetchall()
+                attendance = cursor.fetchone()
 
-            # Attendance percentage
+                total_classes = attendance["total_classes"] or 0
+                present_classes = attendance["present_classes"] or 0
+
+                if total_classes > 0:
+
+                    percentage = round(
+                        (present_classes / total_classes) * 100,
+                        2
+                    )
+
+                    if percentage < 75:
+
+                        cursor.execute(
+                            """
+                            SELECT email
+                            FROM students
+                            WHERE student_id = %s
+                            """,
+                            (student["student_id"],)
+                        )
+
+                        student_email = cursor.fetchone()
+
+                        if student_email:
+
+                            send_low_attendance_email(
+                                student["name"],
+                                student_email["email"],
+                                selected_course["course_name"],
+                                percentage
+                            )            
+
+                        cursor.close()
+
+                        flash(
+                            "Attendance marked successfully!",
+                            "success"
+                        )
+
+                        return redirect(url_for("mark_attendance"))
+
+                    # VIEW ATTENDANCE
+
+                    if request.form.get("view_attendance"):
+
+                        view_course = request.form.get("view_course_id")
+                        view_date = request.form.get("view_attendance_date")
+                        
+
+                        cursor.execute(
+                            """
+                            SELECT  
+                                s.name,
+                                s.roll_number,
+                                a.attendance_date,
+                                a.status
+                            FROM attendance a
+                            INNER JOIN students s
+                                ON a.student_id = s.student_id
+                            WHERE a.course_id = %s
+                            AND a.attendance_date = %s
+                            ORDER BY s.roll_number
+                            """,
+                            (view_course, view_date)
+                        )
+                        attendance_records = cursor.fetchall()
+
+             # Attendance percentage
             cursor.execute(
                 """
                 SELECT
@@ -1093,6 +1240,8 @@ def assistant_ask():
     return jsonify({
         "response": "Please login first."
     }), 401
+
+
 if __name__ == "__main__":
     app.run(debug=True)
 
