@@ -692,7 +692,7 @@ def mark_attendance():
                     )
 
             db.commit()
-            
+
             # Check for low attendance and send email notification
 
             for student in students:
@@ -750,44 +750,47 @@ def mark_attendance():
                                 student_email["email"],
                                 selected_course["course_name"],
                                 percentage
-                            )            
+                            )
 
-                        cursor.close()
+            cursor.close()
 
-                        flash(
-                            "Attendance marked successfully!",
-                            "success"
-                        )
+            flash(
+                "Attendance marked successfully!",
+                "success"
+            )
 
-                        return redirect(url_for("mark_attendance"))
+            return redirect(url_for("mark_attendance"))
 
-                    # VIEW ATTENDANCE
+        # VIEW ATTENDANCE
 
-                    if request.form.get("view_attendance"):
+        if request.form.get("view_attendance"):
 
-                        view_course = request.form.get("view_course_id")
-                        view_date = request.form.get("view_attendance_date")
-                        
+            view_course = request.form.get("view_course_id")
+            view_date = request.form.get("view_date")
+            
+            
+            cursor.execute(
+                """
+                SELECT
+                    s.name,
+                    s.roll_number,
+                    a.attendance_date,
+                    a.status
+                FROM attendance a
+                INNER JOIN students s
+                    ON a.student_id = s.student_id
+                WHERE a.course_id = %s
+                AND a.attendance_date = %s
+                ORDER BY s.roll_number
+                """,
+                (view_course, view_date)
+            )
 
-                        cursor.execute(
-                            """
-                            SELECT  
-                                s.name,
-                                s.roll_number,
-                                a.attendance_date,
-                                a.status
-                            FROM attendance a
-                            INNER JOIN students s
-                                ON a.student_id = s.student_id
-                            WHERE a.course_id = %s
-                            AND a.attendance_date = %s
-                            ORDER BY s.roll_number
-                            """,
-                            (view_course, view_date)
-                        )
-                        attendance_records = cursor.fetchall()
+            attendance_records = cursor.fetchall()
+            
 
-             # Attendance percentage
+            # Attendance percentage
+
             cursor.execute(
                 """
                 SELECT
@@ -906,7 +909,7 @@ def mark_attendance():
         attendance_percentage=attendance_percentage,
         attendance_history=attendance_history
     )
-
+    
 @app.route("/teacher-course")
 def teacher_course():
     return render_template("teacher-course.html")
