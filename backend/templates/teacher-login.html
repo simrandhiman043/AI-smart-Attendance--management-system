@@ -1,60 +1,173 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Teacher Login | AI Smart Attendance Management System</title>
 
-    <!-- Reusing the same stylesheet as the landing page and student login page -->
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
 </head>
-<body>
 
-    <!-- ===== Navigation Bar (same as landing page) ===== -->
+<body class="login-page">
+
+    <!-- Navigation Bar -->
     <header class="navbar">
+
         <div class="logo">AI Attendance System</div>
 
         <nav>
             <ul class="nav-links">
-                <li><a href="index.html#home">Home</a></li>
-                <li><a href="index.html#features">Features</a></li>
-                <li><a href="index.html#about">About</a></li>
-                <li><a href="index.html#contact">Contact</a></li>
+                <li>
+                    <a href="{{ url_for('home') }}#home">Home</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('home') }}#features">Features</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('home') }}#about">About</a>
+                </li>
+                <li>
+                    <a href="{{ url_for('home') }}#contact">Contact</a>
+                </li>
             </ul>
         </nav>
+
     </header>
 
-    <!-- ===== Teacher Login Section ===== -->
-    <!-- Reuses the same .login-wrapper / .login-card classes as student-login.html -->
-    <section class="login-wrapper">
-        <div class="login-card">
-            <h1>Teacher Login</h1>
 
-            <form method="POST" action="{{ url_for('teacher_login') }}">
-                <!-- Email field -->
-                <div class="input-group">
-                    <label for="email">Email</label>
-                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+    <!-- Split Screen Login -->
+    <main class="login-container">
+
+        <!-- Left Branding Panel -->
+        <section class="login-brand">
+
+            <div class="brand-content">
+
+                <span class="brand-tag">
+                    SMART • SIMPLE • DIGITAL
+                </span>
+
+                <h1>
+                    Welcome Back,
+                    <span>Teacher!</span>
+                </h1>
+
+                <p>
+                    Manage your courses, monitor student attendance,
+                    and simplify academic management with our
+                    smart attendance system.
+                </p>
+
+                <div class="brand-highlight">
+                    <span>✓</span>
+                    Easy Course Management
                 </div>
 
-                <!-- Password field -->
-                <div class="input-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" placeholder="Enter your password" required>
+                <div class="brand-highlight">
+                    <span>✓</span>
+                    Student Attendance Tracking
                 </div>
 
-                <!-- Login button -->
-                <button type="submit" class="btn-primary">Login</button>
-            </form>
+                <div class="brand-highlight">
+                    <span>✓</span>
+                    Smart Academic Management
+                </div>
 
-            <!-- Back to Home button, redirects to landing page -->
-            <a href="{{ url_for('home') }}" class="btn-secondary">Back to Home</a>
-        </div>
-    </section>
+            </div>
 
-    <!-- ===== Footer (same as landing page) ===== -->
+        </section>
+
+
+        <!-- Right Login Panel -->
+        <section class="login-form-section">
+
+            <div class="login-card">
+
+                <div class="login-heading">
+
+                    <span class="login-icon">👨‍🏫</span>
+
+                    <h2>Teacher Login</h2>
+
+                    <p>
+                        Enter your details to access your account
+                    </p>
+
+                </div>
+
+
+                <form method="POST"
+                      action="{{ url_for('teacher_login') }}">
+
+                    <!-- Email -->
+                    <div class="input-group">
+
+                        <label for="email">Email Address</label>
+
+                        <input
+                            type="email"
+                            id="email"
+                            name="email"
+                            placeholder="Enter your email"
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- Password -->
+                    <div class="input-group">
+
+                        <label for="password">Password</label>
+
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            placeholder="Enter your password"
+                            required
+                        >
+
+                    </div>
+
+
+                    <!-- Login Button -->
+                    <button type="submit"
+                            class="btn-primary login-button">
+
+                        Login to Account
+
+                    </button>
+
+                </form>
+
+
+                <!-- Back to Home -->
+                <a href="{{ url_for('home') }}"
+                   class="btn-secondary">
+
+                    ← Back to Home
+
+                </a>
+
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- Footer -->
     <footer class="footer">
-        <p>&copy; 2026 AI Smart Attendance Management System. All rights reserved.</p>
+
+        <p>
+            &copy; 2026 AI Smart Attendance Management System.
+            All rights reserved.
+        </p>
+
     </footer>
 
 </body>

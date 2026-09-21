@@ -1,100 +1,416 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>AI Smart Attendance Management System</title>
 
-    <!-- Linking external CSS file -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
 </head>
-<body>
 
-    <!-- ===== Navigation Bar ===== -->
+<body class="landing">
+
+    <!-- NAVBAR -->
     <header class="navbar">
-        <div class="logo">AI Attendance System</div>
 
-        <nav>
+        <a href="#home" class="logo">
+            AI Attendance System
+        </a>
+
+        <nav aria-label="Main navigation">
             <ul class="nav-links">
+
                 <li><a href="#home">Home</a></li>
                 <li><a href="#features">Features</a></li>
                 <li><a href="#about">About</a></li>
                 <li><a href="#contact">Contact</a></li>
+
+                <li>
+                    <a href="{{ url_for('student_login') }}" class="nav-btn nav-btn-outline">
+                        Student Login
+                    </a>
+                </li>
+
+                <li>
+                    <a href="{{ url_for('teacher_login') }}" class="nav-btn nav-btn-solid">
+                        Teacher Login
+                    </a>
+                </li>
+
             </ul>
         </nav>
+
     </header>
 
-    <!-- ===== Hero Section ===== -->
+
+    <!-- HERO SECTION -->
     <section class="hero" id="home">
-        <h1>Smart Attendance, Made Simple</h1>
-        <p>
-            An AI-powered attendance management system that makes marking,
-            tracking and managing attendance faster and easier for students
-            and teachers.
-        </p>
-        <a href="#features" class="btn-primary">Get Started</a>
-        
+
+        <div class="hero-grid">
+
+            <div class="hero-copy">
+
+                <div class="eyebrow">
+                    Smart. Simple. Digital.
+                </div>
+
+                <h1>
+                    Attendance management,
+                    <span>made smarter.</span>
+                </h1>
+
+                <p>
+                    Manage attendance, track student performance,
+                    and access useful insights through one simple
+                    AI-powered platform designed for teachers and students.
+                </p>
+
+                <div class="hero-actions">
+
+                    <a href="{{ url_for('student_login') }}" class="btn-primary">
+                        Student Login →
+                    </a>
+
+                    <a href="{{ url_for('teacher_login') }}" class="btn-secondary-landing">
+                        Teacher Login
+                    </a>
+
+                </div>
+
+                <p class="hero-note">
+                    One platform for attendance, records, alerts, and assistance.
+                </p>
+
+            </div>
+
+
+            <!-- DASHBOARD PREVIEW -->
+            <div class="hero-visual">
+
+                <div class="mock-window">
+
+                    <div class="mock-topbar">
+
+                        <div class="mock-dots">
+                            <span></span>
+                            <span></span>
+                            <span></span>
+                        </div>
+
+                        <div class="mock-label">
+                            ATTENDANCE OVERVIEW
+                        </div>
+
+                    </div>
+
+
+                    <div class="mock-body">
+
+                        <h2 class="mock-heading">
+                            Good morning, Teacher
+                        </h2>
+
+                        <p class="mock-subheading">
+                            Here is a quick view of your classroom.
+                        </p>
+
+
+                        <div class="mock-stats">
+
+                            <div class="mock-stat info">
+                                <strong>04</strong>
+                                <span>Active Courses</span>
+                            </div>
+
+                            <div class="mock-stat success">
+                                <strong>92%</strong>
+                                <span>Average Attendance</span>
+                            </div>
+
+                        </div>
+
+
+                        <div class="mock-table">
+
+                            <div class="mock-table-title">
+                                <span>Recent Attendance</span>
+                                <span>Today</span>
+                            </div>
+
+                            <div class="mock-row">
+                                <span>Student 01</span>
+                                <span class="mock-status">Present</span>
+                            </div>
+
+                            <div class="mock-row">
+                                <span>Student 02</span>
+                                <span class="mock-status">Present</span>
+                            </div>
+
+                            <div class="mock-row">
+                                <span>Student 03</span>
+                                <span class="mock-status">Present</span>
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
     </section>
 
-    <!-- ===== Feature Cards Section ===== -->
-    <section class="cards-section">
+
+    <!-- LOGIN CARDS -->
+    <section class="cards-section" aria-label="User access options">
+
         <a href="{{ url_for('student_login') }}" class="card">
-    <h3>Student Login</h3>
-    <p>Students can log in to view their attendance records and stay updated.</p>
-    </a>
+
+            <h3>Student Login</h3>
+
+            <p>
+                View attendance records, check subject-wise performance,
+                review history, and use the AI assistant.
+            </p>
+
+        </a>
+
 
         <a href="{{ url_for('teacher_login') }}" class="card">
-    <h3>Teacher Login</h3>
-    <p>Teachers can log in to mark and manage attendance for their classes.</p>
-    </a>
+
+            <h3>Teacher Login</h3>
+
+            <p>
+                Create courses, enroll students, mark attendance,
+                view reports, and send low-attendance alerts.
+            </p>
+
+        </a>
+
 
         <div class="card">
+
             <h3>AI Assistant</h3>
-            <p>Ask attendance-related questions and receive quick responses from the AI assistant.</p>
+
+            <p>
+                Ask attendance-related questions and receive quick,
+                helpful responses through the integrated AI assistant.
+            </p>
+
         </div>
+
     </section>
 
-    <!-- ===== Features / About Section ===== -->
+
+
+    <!-- FEATURES SECTION -->
     <section class="features" id="features">
-        <h2>Why Use This System?</h2>
-        <p>
-            Traditional attendance methods take time and can lead to errors.
-            Our AI Smart Attendance Management System helps schools and colleges
-            save time by automating the attendance process, reducing manual
-            work, and keeping accurate digital records for both students and
-            teachers.
-        </p>
 
-        <ul class="feature-list">
-            <li>Easy and quick attendance marking</li>
-            <li>Separate login for students and teachers</li>
-            <li>Digital records that are easy to access</li>
-            <li>Reduces manual paperwork</li>
-        </ul>
+        <div class="section-heading">
+            <span class="section-tag">POWERFUL FEATURES</span>
+
+            <h2>Everything You Need in One Place</h2>
+
+            <p>
+                Simplify attendance management with smart tools
+                designed for students and teachers.
+            </p>
+        </div>
+
+        <div class="feature-cards">
+
+            <div class="feature-box">
+                <div class="feature-icon">✓</div>
+                <h3>Easy Attendance</h3>
+                <p>
+                    Mark and manage student attendance quickly
+                    without unnecessary paperwork.
+                </p>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-icon">▣</div>
+                <h3>Digital Records</h3>
+                <p>
+                    Store attendance records digitally and
+                    access them whenever required.
+                </p>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-icon">%</div>
+                <h3>Attendance Tracking</h3>
+                <p>
+                    Check attendance percentages and monitor
+                    student performance easily.
+                </p>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-icon">✉</div>
+                <h3>Email Alerts</h3>
+                <p>
+                    Send low-attendance notifications to
+                    students through email.
+                </p>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-icon">♙</div>
+                <h3>Separate Dashboards</h3>
+                <p>
+                    Dedicated dashboards for teachers and
+                    students with role-based access.
+                </p>
+            </div>
+
+            <div class="feature-box">
+                <div class="feature-icon">✦</div>
+                <h3>AI Assistant</h3>
+                <p>
+                    Get quick responses to attendance-related
+                    questions using AI assistance.
+                </p>
+            </div>
+
+        </div>
+
     </section>
 
-    <!-- ===== About Section ===== -->
+
+    <!-- ABOUT SECTION -->
     <section class="about" id="about">
-        <h2>About the Project</h2>
-        <p>
-            This project is developed as a college mini project using Flask
-            for the backend, MySQL for the database, and HTML, CSS and
-            JavaScript for the frontend. It aims to demonstrate how a simple
-            web application can help automate everyday college tasks like
-            attendance management.The AI assistant will answer attendance-related queries using the Gemini API.
-        </p>
+
+        <div class="about-content">
+
+            <div class="about-text">
+
+                <span class="section-tag">ABOUT OUR PROJECT</span>
+
+                <h2>Making Attendance Management Smarter</h2>
+
+                <p>
+                    This project is developed as a college project to simplify
+                    attendance management for students and teachers.
+                    It reduces manual work, keeps digital records organized,
+                    and provides useful attendance insights.
+                </p>
+
+                <p>
+                    The system is built with an AI assistant that answers
+                    attendance-related queries using the Gemini API.
+                </p>
+
+            </div>
+
+
+            <div class="tech-stack">
+
+                <h3>Technologies We Use</h3>
+
+                <div class="tech-grid">
+
+                    <div class="tech-item">
+                        <strong>Flask</strong>
+                        <span>Backend</span>
+                    </div>
+
+                    <div class="tech-item">
+                        <strong>MySQL</strong>
+                        <span>Database</span>
+                    </div>
+
+                    <div class="tech-item">
+                        <strong>HTML & CSS</strong>
+                        <span>Frontend</span>
+                    </div>
+
+                    <div class="tech-item">
+                        <strong>JavaScript</strong>
+                        <span>Interactivity</span>
+                    </div>
+
+                    <div class="tech-item">
+                        <strong>Gemini API</strong>
+                        <span>AI Assistant</span>
+                    </div>
+
+                    <div class="tech-item">
+                        <strong>Flask-Mail</strong>
+                        <span>Email Alerts</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
     </section>
 
-    <!-- ===== Contact Section ===== -->
+
+    <!-- CONTACT SECTION -->
     <section class="contact" id="contact">
-        <h2>Contact</h2>
-        <p>For queries related to this project, please reach out through your college email or GitHub repository.</p>
+
+        <div class="section-heading">
+            <span class="section-tag">GET IN TOUCH</span>
+            <h2>Have Questions?</h2>
+            <p>
+                Connect with us to learn more about our smart attendance
+                management system.
+            </p>
+        </div>
+
+        <div class="contact-cards">
+
+            <div class="contact-card">
+                <div class="contact-icon">✉</div>
+                <h3>Email Support</h3>
+                <p>Get in touch with our project team through email.</p>
+                <span>Project Support</span>
+            </div>
+
+            <div class="contact-card">
+                <div class="contact-icon">♙</div>
+                <h3>Student & Teacher</h3>
+                <p>Access your dashboard and manage attendance easily.</p>
+                <span>Easy Access</span>
+            </div>
+
+            <div class="contact-card">
+                <div class="contact-icon">✦</div>
+                <h3>AI Assistant</h3>
+                <p>Get quick answers to attendance-related queries.</p>
+                <span>Smart Assistance</span>
+            </div>
+
+        </div>
+
     </section>
 
-    <!-- ===== Footer ===== -->
+    <!-- FOOTER -->
     <footer class="footer">
-        <p>&copy; 2026 AI Smart Attendance Management System. All rights reserved.</p>
+
+        <p>
+            &copy; 2026 AI Smart Attendance Management System.
+            All rights reserved.
+        </p>
+
     </footer>
 
 </body>
+
 </html>
