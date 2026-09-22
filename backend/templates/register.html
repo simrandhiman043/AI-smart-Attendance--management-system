@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Registration | AI Smart Attendance Management System</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/landing.css') }}">
+
+</head>
+
+<body class="login-page">
+
+    <header class="navbar">
+
+        <div class="logo">AI Attendance System</div>
+
+        <nav>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('home') }}">Home</a></li>
+                <li><a href="{{ url_for('home') }}#features">Features</a></li>
+                <li><a href="{{ url_for('home') }}#about">About</a></li>
+                <li><a href="{{ url_for('home') }}#contact">Contact</a></li>
+            </ul>
+        </nav>
+
+    </header>
+
+
+    <main class="login-wrapper">
+
+        <div class="login-card">
+
+            <div class="login-heading">
+                <h1>Create Your Account</h1>
+                <p>Choose your role to register.</p>
+            </div>
+
+            <div class="register-options">
+
+                <!-- STUDENT CARD -->
+                <a href="{{ url_for('student_register') }}" class="register-card">
+
+                    <div class="register-icon">🎓</div>
+
+                    <h2>Student Registration</h2>
+
+                    <p>
+                        Create your student account and
+                        manage your attendance records.
+                    </p>
+
+                    <span class="btn-primary">
+                        Register as Student →
+                    </span>
+
+                </a>
+
+
+                <!-- TEACHER CARD -->
+                <a href="{{ url_for('teacher_register') }}" class="register-card">
+
+                    <div class="register-icon">👨‍🏫</div>
+
+                    <h2>Teacher Registration</h2>
+
+                    <p>
+                        Create your teacher account and
+                        manage courses and attendance.
+                    </p>
+
+                    <span class="btn-primary">
+                        Register as Teacher →
+                    </span>
+
+                </a>
+
+            </div>
+
+            <a href="{{ url_for('home') }}" class="btn-secondary">
+                ← Back to Home
+            </a>
+
+        </div>
+
+    </main>
+    <footer class="footer">
+
+        <p>
+            &copy; 2026 AI Smart Attendance Management System.
+            All rights reserved.
+        </p>
+
+    </footer>
+
+</body>
+
+</html>

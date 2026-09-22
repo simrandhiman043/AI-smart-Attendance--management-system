@@ -1,7 +1,9 @@
 # Main Flask application
-from flask import Flask, render_template, request, redirect, url_for,session, flash, jsonify
+
+from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from google import genai
 from datetime import date
+from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_mail import Mail, Message
 import mysql.connector
 from dotenv import load_dotenv
@@ -9,48 +11,35 @@ import os
 from routes.student_registration import student_registration_bp
 from routes.teacher_registration import teacher_registration_bp
 from routes.course_management import course_management_bp
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 
+# Load environment variables
+load_dotenv()
+
+# Create Flask app
 app = Flask(__name__)
 
+# Secret key
+app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key")
+
+# Password reset serializer
+serializer = URLSafeTimedSerializer(app.secret_key)
+
+# Email configuration
 app.config["MAIL_SERVER"] = os.getenv("MAIL_SERVER")
 app.config["MAIL_PORT"] = int(os.getenv("MAIL_PORT", 587))
 app.config["MAIL_USERNAME"] = os.getenv("MAIL_USERNAME")
 app.config["MAIL_PASSWORD"] = os.getenv("MAIL_PASSWORD")
 app.config["MAIL_USE_TLS"] = True
+
 mail = Mail(app)
-def send_low_attendance_email(student_name, student_email, subject, attendance_percentage):
 
-    msg = Message(
-        subject="Low Attendance Alert - AI Smart Attendance System",
-        sender=os.getenv("MAIL_USERNAME"),
-        recipients=[student_email]
-    )
-
-    msg.body = f"""
-Hello {student_name},
-
-Your attendance in {subject} is currently {attendance_percentage}%.
-
-This is below the required 75% attendance.
-
-Please attend upcoming classes regularly to improve your attendance.
-
-Regards,
-AI Smart Attendance Management System
-"""
-
-    mail.send(msg)
-
-app.secret_key = os.getenv("SECRET_KEY", "dev-secret-key")
-app.secret_key = "ai-attendance-secret-key-2026"
-load_dotenv()  # Load environment variables from .env file
+# Register blueprints
 app.register_blueprint(student_registration_bp)
 app.register_blueprint(teacher_registration_bp)
 app.register_blueprint(course_management_bp)
 
-
-
+# Database connection
 db = mysql.connector.connect(
     host=os.getenv("MYSQL_HOST"),
     user=os.getenv("MYSQL_USER"),
@@ -59,11 +48,38 @@ db = mysql.connector.connect(
     use_pure=True,
     autocommit=True
 )
-
+# Gemini AI client
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY")
 )
 
+
+def send_low_attendance_email(student_name, student_email, course_name, percentage):
+
+    msg = Message(
+        subject="Low Attendance Warning - AI Attendance System",
+        sender=os.getenv("MAIL_USERNAME"),
+        recipients=[student_email]
+    )
+
+    msg.body = f"""
+Hello {student_name},
+
+This is an attendance warning notification.
+
+Course: {course_name}
+Your Attendance: {percentage}%
+
+Your attendance is below the required 75%.
+
+Please maintain regular attendance.
+
+Regards,
+AI Smart Attendance Management System
+"""
+
+    mail.send(msg)
+    
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -1244,7 +1260,138 @@ def assistant_ask():
         "response": "Please login first."
     }), 401
 
+@app.route("/register")
+def register():
+    return render_template("register.html")
 
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+
+    if request.method == "POST":
+
+        email = request.form.get("email")
+        user_type = request.form.get("user_type")
+
+        if user_type not in ("student", "teacher"):
+            return "Invalid account type.", 400
+
+        if not email:
+            return "Please enter your email.", 400
+
+        table = "students" if user_type == "student" else "teachers"
+
+        cursor = db.cursor(dictionary=True)
+
+        cursor.execute(
+            f"SELECT * FROM {table} WHERE email = %s",
+            (email,)
+        )
+
+        user = cursor.fetchone()
+        cursor.close()
+
+        if not user:
+            return "No account found with this email.", 404
+
+        token = serializer.dumps(
+            {
+                "email": email,
+                "user_type": user_type
+            },
+            salt="password-reset"
+        )
+
+        reset_link = url_for(
+            "reset_password",
+            token=token,
+            _external=True
+        )
+
+        msg = Message(
+            subject="Password Reset - AI Attendance System",
+            sender=os.getenv("MAIL_USERNAME"),
+            recipients=[email]
+        )
+
+        msg.body = f"""
+Hello,
+
+Click the link below to reset your password:
+
+{reset_link}
+
+This link will expire in 10 minutes.
+
+Regards,
+AI Smart Attendance Management System
+"""
+
+        mail.send(msg)
+
+        return "Password reset link sent to your email."
+
+    return render_template(
+        "forgot-password.html",
+        mode="forgot"
+    )
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+
+    try:
+        data = serializer.loads(
+            token,
+            salt="password-reset",
+            max_age=600
+        )
+
+    except (SignatureExpired, BadSignature):
+        return "This password reset link is invalid or expired.", 400
+
+    email = data["email"]
+    user_type = data["user_type"]
+
+    table = "students" if user_type == "student" else "teachers"
+
+    if request.method == "POST":
+
+        password = request.form.get("password")
+        confirm_password = request.form.get("confirm_password")
+
+        if not password or not confirm_password:
+            return "Please fill all password fields.", 400
+
+        if password != confirm_password:
+            return "Passwords do not match.", 400
+
+        if len(password) < 6:
+            return "Password must contain at least 6 characters.", 400
+
+        hashed_password = generate_password_hash(password)
+
+        cursor = db.cursor()
+
+        cursor.execute(
+            f"UPDATE {table} SET password = %s WHERE email = %s",
+            (hashed_password, email)
+        )
+
+        db.commit()
+        cursor.close()
+
+        if user_type == "student":
+            return redirect(url_for("student_login"))
+
+        return redirect(url_for("teacher_login"))
+
+    return render_template(
+        "forgot-password.html",
+        mode="reset",
+        token=token
+    )
+    
 if __name__ == "__main__":
     app.run(debug=True)
 

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, redirect, url_for
 import mysql.connector
 import os
 from dotenv import load_dotenv
@@ -54,4 +54,4 @@ def register_teacher():
     cursor.close()
     conn.close()
 
-    return jsonify({"message": "Teacher registered successfully."}), 201
+    return redirect(url_for("teacher_login"))
