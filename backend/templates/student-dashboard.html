@@ -2,302 +2,257 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <title>
-        Student Dashboard | AI Smart Attendance Management System
-    </title>
+    <title>Student Dashboard | AI Smart Attendance Management System</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+          
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/student-dashboard.css') }}">
 
 </head>
 
 
 <body>
 
-    <header class="navbar">
+<header class="navbar">
 
-        <div class="logo">
-            AI Attendance System
-        </div>
+    <div class="logo">
+        AI Attendance System
+    </div>
 
-        <nav>
+    <nav>
+        <ul class="nav-links">
 
-            <ul class="nav-links">
+            <li>
+                <a href="{{ url_for('home') }}">Home</a>
+            </li>
 
-                <li>
-                    <a href="{{ url_for('home') }}">
-                        Home
-                    </a>
-                </li>
+            <li>
+                <a href="{{ url_for('student_dashboard') }}">
+                    Dashboard
+                </a>
+            </li>
 
-                <li>
-                    <a href="#">
-                        Dashboard
-                    </a>
-                </li>
+            <li>
+                <a href="{{ url_for('student_attendance') }}">
+                    Attendance
+                </a>
+            </li>
 
-                <li>
-                    <a href="#">
-                        Attendance
-                    </a>
-                </li>
+            <li>
+                <a href="{{ url_for('assistant') }}">
+                    AI Assistant
+                </a>
+            </li>
 
-                <li>
-                    <a href="#">
-                        AI Assistant
-                    </a>
-                </li>
+            <li>
+                <a href="{{ url_for('student_logout') }}">
+                    Logout
+                </a>
+            </li>
 
-            </ul>
+        </ul>
+    </nav>
 
-        </nav>
+</header>
 
-    </header>
 
-    <!-- ========================= -->
-    <!-- MAIN DASHBOARD -->
-    <!-- ========================= -->
+<main class="student-dashboard">
 
-    <main class="dashboard-container">
+    <!-- Welcome -->
+    <section class="dashboard-top">
 
-        <section class="dashboard-header">
-
-            <h1>
-                Welcome, {{ student.name }}!
-            </h1>
+        <div class="welcome-text">
+            <h1>Welcome, {{ student.name }}! 👋</h1>
 
             <p>
                 Here's your attendance overview.
             </p>
+        </div>
 
-        </section>
+        <div class="profile-mini">
+            <strong>{{ student.roll_number }}</strong>
+            <span>Semester {{ student.semester }}</span>
+        </div>
 
-        <section class="dashboard-card">
+    </section>
 
-            <h2>
-                Student Profile
-            </h2>
 
-            <div class="student-details">
+    <!-- Summary Cards -->
+    <section class="summary-grid">
 
-                <p>
-                    <strong>Name:</strong>
-                    {{ student.name }}
-                </p>
+        <div class="summary-card">
+            <h3>Overall Attendance</h3>
+            <p class="value">{{ overall_percentage }}%</p>
+        </div>
 
-                <p>
-                    <strong>Email:</strong>
-                    {{ student.email }}
-                </p>
+        <div class="summary-card">
+            <h3>Total Courses</h3>
+            <p class="value">
+                {{ subject_attendance|length if subject_attendance else 0 }}
+            </p>
+        </div>
 
-                <p>
-                    <strong>Roll Number:</strong>
-                    {{ student.roll_number }}
-                </p>
+        <div class="summary-card">
+            <h3>Present Classes</h3>
+            <p class="value">{{ present_classes }}</p>
+        </div>
 
-                <p>
-                    <strong>Semester:</strong>
-                    {{ student.semester }}
-                </p>
+        <div class="summary-card">
+            <h3>Absent Classes</h3>
+            <p class="value">{{ absent_classes }}</p>
+        </div>
 
-            </div>
+    </section>
 
-        </section>
 
-        <section class="dashboard-card">
+    <!-- Student Profile -->
+    <section class="dashboard-card">
 
-            <h2>
-                Attendance Summary
-            </h2>
+        <h2>Student Profile</h2>
 
+        <div class="student-details">
 
-            <div class="attendance-summary">
+            <p>
+                <strong>Name:</strong>
+                {{ student.name }}
+            </p>
 
+            <p>
+                <strong>Email:</strong>
+                {{ student.email }}
+            </p>
 
-                <div class="attendance-box">
+            <p>
+                <strong>Roll Number:</strong>
+                {{ student.roll_number }}
+            </p>
 
-                    <h3>
-                        Overall Attendance
-                    </h3>
+            <p>
+                <strong>Semester:</strong>
+                {{ student.semester }}
+            </p>
 
-                    <p>
-                        {{ overall_percentage }}%
-                    </p>
+        </div>
 
-                </div>
+    </section>
 
 
-                <div class="attendance-box">
+    <!-- Attendance -->
+    <section class="dashboard-card">
 
-                    <h3>
-                        Present
-                    </h3>
+        <h2>Course-wise Attendance</h2>
 
-                    <p>
-                        {{ present_classes }}
-                    </p>
+        <div class="attendance-table">
 
-                </div>
+            <table>
 
+                <thead>
+                    <tr>
+                        <th>Subject</th>
+                        <th>Total Classes</th>
+                        <th>Present</th>
+                        <th>Absent</th>
+                        <th>Attendance</th>
+                    </tr>
+                </thead>
 
-                <div class="attendance-box">
+                <tbody>
 
-                    <h3>
-                        Absent
-                    </h3>
+                {% if subject_attendance %}
 
-                    <p>
-                        {{ absent_classes }}
-                    </p>
+                    {% for record in subject_attendance %}
 
-                </div>
+                    <tr>
+                        <td>{{ record.subject }}</td>
+                        <td>{{ record.total_classes }}</td>
+                        <td>{{ record.present_classes }}</td>
+                        <td>{{ record.absent_classes }}</td>
+                        <td>
+                            {{ record.attendance_percentage }}%
+                        </td>
+                    </tr>
 
+                    {% endfor %}
 
-            </div>
+                {% else %}
 
-        </section>
+                    <tr>
+                        <td colspan="5">
+                            No attendance data available yet.
+                        </td>
+                    </tr>
 
-        <section class="dashboard-card">
+                {% endif %}
 
-            <h2>
-                Subject-wise Attendance
-            </h2>
+                </tbody>
 
+            </table>
 
-            <div class="attendance-table">
+        </div>
 
-                <table>
+    </section>
 
-                    <thead>
 
-                        <tr>
+    <!-- Low Attendance -->
+    {% if overall_percentage < 75 %}
 
-                            <th>
-                                Subject
-                            </th>
+    <section class="dashboard-card">
 
-                            <th>
-                                Total Classes
-                            </th>
+        <div class="warning-box">
 
-                            <th>
-                                Present
-                            </th>
+            <strong>⚠ Low Attendance Warning</strong>
 
-                            <th>
-                                Absent
-                            </th>
+            Your overall attendance is below the required
+            75%. Please maintain regular attendance.
 
-                            <th>
-                                Percentage
-                            </th>
+        </div>
 
-                        </tr>
+    </section>
 
-                    </thead>
+    {% endif %}
 
 
-                    <tbody>
+    <!-- Quick Actions -->
+    <section class="dashboard-card">
 
+        <h2>Quick Actions</h2>
 
-                        {% if subject_attendance %}
+        <div class="dashboard-actions">
 
+            <a href="{{ url_for('student_attendance') }}"
+               class="btn-primary">
+                View Attendance
+            </a>
 
-                        {% for record in subject_attendance %}
+            <a href="{{ url_for('assistant') }}"
+               class="btn-primary">
+                AI Assistant
+            </a>
 
-                        <tr>
+            <a href="{{ url_for('student_logout') }}"
+               class="btn-secondary">
+                Logout
+            </a>
 
-                            <td>
-                                {{ record.subject }}
-                            </td>
+        </div>
 
-                            <td>
-                                {{ record.total_classes }}
-                            </td>
+    </section>
 
-                            <td>
-                                {{ record.present_classes }}
-                            </td>
+</main>
 
-                            <td>
-                                {{ record.absent_classes }}
-                            </td>
 
-                            <td>
-                                {{ record.attendance_percentage }}%
-                            </td>
+<footer class="footer">
 
-                        </tr>
+    <p>
+        &copy; 2026 AI Smart Attendance Management System.
+        All rights reserved.
+    </p>
 
-                        {% endfor %}
-
-
-                        {% else %}
-
-                        <tr>
-
-                            <td colspan="5">
-
-                                No attendance data available yet.
-
-                            </td>
-
-                        </tr>
-
-                        {% endif %}
-
-
-                    </tbody>
-
-                </table>
-
-            </div>
-
-        </section>
-
-        <section class="dashboard-card">
-
-            <h2>
-                Quick Actions
-            </h2>
-
-
-            <div class="dashboard-actions">
-
-                <a href="{{ url_for('student_attendance') }}" class="btn-primary">
-                    View Attendance
-                </a>
-
-                <a href="{{ url_for('assistant') }}" class="btn-primary">
-                    AI Assistant
-                </a>
-
-
-                <a href="{{ url_for('student_logout') }}" class="btn-secondary">
-                    Logout
-                </a>
-
-            </div>
-
-        </section>
-
-
-    </main>
-
-    <footer class="footer">
-
-        <p>
-            &copy; 2026 AI Smart Attendance Management System.
-            All rights reserved.
-        </p>
-
-    </footer>
-
+</footer>
 
 </body>
-
 </html>

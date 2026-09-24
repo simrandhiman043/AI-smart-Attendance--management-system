@@ -15,6 +15,9 @@
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/style.css') }}">
 
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/assistant.css') }}">
+
 </head>
 
 
@@ -82,62 +85,103 @@
     </header>
 
 
-
     <!-- AI Assistant -->
 
-    <main class="dashboard-container">
+    <main class="assistant-container">
 
 
-        <section class="dashboard-header">
+        <section class="assistant-header">
 
-            <h1>
-                AI Assistant
-            </h1>
+            <div class="assistant-icon">
+                🤖
+            </div>
 
-            <p>
-                Ask questions about your attendance.
-            </p>
+            <div>
+                <h1>
+                    AI Assistant
+                </h1>
+
+                <p>
+                    Your smart attendance assistant
+                </p>
+            </div>
 
         </section>
 
 
+        <section class="assistant-card">
 
-        <section class="dashboard-card">
 
+            <!-- Chat Header -->
 
-            <div id="chat-box">
+            <div class="chat-header">
 
-                <div class="course-item">
+                <div class="bot-avatar">
+                    🤖
+                </div>
 
-                    <h3>
-                        AI Assistant
-                    </h3>
+                <div class="bot-info">
 
-                    <p>
-                        Hello! 👋
-                        Ask me something about your attendance.
-                    </p>
+                    <h2>
+                        AI Attendance Assistant
+                    </h2>
+
+                    <span>
+                        ● Online
+                    </span>
 
                 </div>
 
             </div>
 
 
-            <form id="assistant-form">
+            <!-- Chat Messages -->
+
+            <div id="chat-box" class="chat-box">
+
+                <div class="message bot-message">
+
+                    <div class="message-avatar">
+                        🤖
+                    </div>
+
+                    <div class="message-content">
+
+                        <span class="message-name">
+                            AI Assistant
+                        </span>
+
+                        <p>
+                            Hello! 👋
+                            Ask me something about your attendance.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            <!-- Message Input -->
+
+            <form id="assistant-form" class="assistant-form">
 
                 <input
                     type="text"
                     id="user-message"
                     name="message"
-                    placeholder="Ask something..."
+                    placeholder="Ask something about your attendance..."
+                    autocomplete="off"
                     required
                 >
 
                 <button
                     type="submit"
-                    class="btn-primary"
+                    class="send-button"
                 >
-                    Ask
+                    <span>Send</span>
+                    <span class="send-icon">➤</span>
                 </button>
 
             </form>
@@ -147,7 +191,6 @@
 
 
     </main>
-
 
 
     <footer class="footer">

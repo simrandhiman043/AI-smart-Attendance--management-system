@@ -1,0 +1,255 @@
+/* ================================
+   AI ASSISTANT PAGE
+================================ */
+
+.assistant-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 45px 25px 60px;
+}
+
+
+/* ================================
+   PAGE HEADER
+================================ */
+
+.assistant-header {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-bottom: 25px;
+}
+
+.assistant-icon {
+    width: 55px;
+    height: 55px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2ff;
+    border-radius: 15px;
+    font-size: 27px;
+}
+
+.assistant-header h1 {
+    margin: 0 0 5px;
+    font-size: 30px;
+    color: #111827;
+}
+
+.assistant-header p {
+    margin: 0;
+    color: #6b7280;
+    font-size: 15px;
+}
+
+
+/* ================================
+   ASSISTANT CARD
+================================ */
+
+.assistant-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+}
+
+
+/* ================================
+   CHAT HEADER
+================================ */
+
+.chat-header {
+    display: flex;
+    align-items: center;
+    gap: 13px;
+    padding: 18px 22px;
+    background: #f8faff;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.bot-avatar {
+    width: 45px;
+    height: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2ff;
+    border-radius: 50%;
+    font-size: 22px;
+}
+
+.bot-info h2 {
+    margin: 0 0 4px;
+    font-size: 17px;
+    color: #111827;
+}
+
+.bot-info span {
+    font-size: 13px;
+    color: #16a34a;
+}
+
+
+/* ================================
+   CHAT BOX
+================================ */
+
+.chat-box {
+    height: 440px;
+    padding: 25px;
+    overflow-y: auto;
+    background: #fafbff;
+}
+
+
+/* ================================
+   MESSAGES
+================================ */
+
+.message {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.message-avatar {
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #eef2ff;
+    border-radius: 50%;
+    font-size: 17px;
+}
+
+.message-content {
+    max-width: 75%;
+}
+
+.message-name {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #6b7280;
+}
+
+.message-content p {
+    margin: 0;
+    padding: 12px 15px;
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 4px 14px 14px 14px;
+    color: #374151;
+    font-size: 14px;
+    line-height: 1.5;
+}
+
+
+/* ================================
+   INPUT AREA
+================================ */
+
+.assistant-form {
+    display: flex;
+    gap: 12px;
+    padding: 18px 20px;
+    background: #ffffff;
+    border-top: 1px solid #e5e7eb;
+}
+
+.assistant-form input {
+    flex: 1;
+    height: 48px;
+    padding: 0 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 10px;
+    outline: none;
+    font-size: 14px;
+    color: #111827;
+    background: #ffffff;
+}
+
+.assistant-form input:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+.assistant-form input::placeholder {
+    color: #9ca3af;
+}
+
+
+/* ================================
+   SEND BUTTON
+================================ */
+
+.send-button {
+    height: 48px;
+    padding: 0 20px;
+    border: none;
+    border-radius: 10px;
+    background: #4f46e5;
+    color: #ffffff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: 0.2s ease;
+}
+
+.send-button:hover {
+    background: #4338ca;
+}
+
+.send-icon {
+    font-size: 15px;
+}
+
+
+/* ================================
+   RESPONSIVE
+================================ */
+
+@media (max-width: 650px) {
+
+    .assistant-container {
+        padding: 30px 15px 45px;
+    }
+
+    .assistant-header h1 {
+        font-size: 25px;
+    }
+
+    .chat-box {
+        height: 400px;
+        padding: 18px;
+    }
+
+    .message-content {
+        max-width: 85%;
+    }
+
+    .assistant-form {
+        padding: 14px;
+    }
+
+    .send-button span:first-child {
+        display: none;
+    }
+
+    .send-button {
+        width: 48px;
+        padding: 0;
+    }
+
+}

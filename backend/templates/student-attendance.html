@@ -2,25 +2,17 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <meta name="viewport"
-          content="width=device-width, initial-scale=1.0">
+    <title>My Attendance | AI Attendance System</title>
 
-    <title>
-        My Attendance | AI Smart Attendance Management System
-    </title>
-
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
-
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/student-attendance.css') }}">
 </head>
-
 
 <body>
 
-
+    <!-- NAVBAR -->
     <header class="navbar">
 
         <div class="logo">
@@ -28,18 +20,21 @@
         </div>
 
         <nav>
-
             <ul class="nav-links">
 
                 <li>
-                    <a href="{{ url_for('home') }}">
-                        Home
-                    </a>
+                    <a href="{{ url_for('home') }}">Home</a>
                 </li>
 
                 <li>
                     <a href="{{ url_for('student_dashboard') }}">
                         Dashboard
+                    </a>
+                </li>
+
+                <li>
+                    <a href="#" class="active">
+                        Attendance
                     </a>
                 </li>
 
@@ -50,308 +45,336 @@
                 </li>
 
             </ul>
-
         </nav>
 
     </header>
 
 
+    <!-- MAIN CONTENT -->
+    <main class="attendance-container">
 
-    <main class="dashboard-container">
+        <!-- PAGE INTRO -->
+        <section class="page-heading">
 
-        <!-- Page Header -->
+            <div>
+                <span class="page-label">STUDENT PORTAL</span>
 
-        <section class="dashboard-header">
+                <h1>My Attendance</h1>
 
-            <h1>
-                My Attendance
-            </h1>
-
-            <p>
-                View your course-wise attendance and history.
-            </p>
+                <p>
+                    Track your course-wise attendance and view your
+                    attendance history.
+                </p>
+            </div>
 
         </section>
 
-        <!-- Course + Date Filter -->
 
-        <section class="dashboard-card">
+        <!-- FILTER CARD -->
+        <section class="filter-card">
 
-            <h2>
-                Attendance Filter
-            </h2>
+            <div class="section-title">
 
+                <div class="title-icon">
+                    ⌕
+                </div>
 
-            <form method="POST">
+                <div>
+                    <h2>Attendance Filter</h2>
+                    <p>Select a course and date range</p>
+                </div>
 
-
-                <label for="course_id">
-                    Select Course
-                </label>
-
-                <select
-                    name="course_id"
-                    id="course_id"
-                    required
-                >
-
-                    <option value="">
-                        -- Select Course --
-                    </option>
+            </div>
 
 
-                    {% for course in courses %}
+            <form method="POST" class="filter-form">
 
-                        <option
-                            value="{{ course.course_id }}"
+                <div class="form-group course-field">
 
-                            {% if selected_course
-                                  and selected_course.course_id
-                                  == course.course_id %}
+                    <label for="course_id">
+                        Course
+                    </label>
 
-                                selected
+                    <select name="course_id" id="course_id" required>
 
-                            {% endif %}
-                        >
+                        <option value="">
+                            -- Select Course --
+                        </option>
+
+                        {% for course in courses %}
+
+                        <option value="{{ course.course_id }}" {% if selected_course and
+                            selected_course.course_id==course.course_id %} selected {% endif %}>
 
                             {{ course.course_name }}
                             ({{ course.course_code }})
 
                         </option>
 
-                    {% endfor %}
+                        {% endfor %}
 
-                </select>
+                    </select>
 
-
-                <br><br>
-
-
-                <label for="from_date">
-                    From Date
-                </label>
-
-                <input
-                    type="date"
-                    name="from_date"
-                    id="from_date"
-                    value="{{ selected_from_date }}"
-                >
+                </div>
 
 
-                <br><br>
+                <div class="form-group">
+
+                    <label for="from_date">
+                        From Date
+                    </label>
+
+                    <input type="date" name="from_date" id="from_date" value="{{ selected_from_date }}">
+
+                </div>
 
 
-                <label for="to_date">
-                    To Date
-                </label>
+                <div class="form-group">
 
-                <input
-                    type="date"
-                    name="to_date"
-                    id="to_date"
-                    value="{{ selected_to_date }}"
-                >
+                    <label for="to_date">
+                        To Date
+                    </label>
 
+                    <input type="date" name="to_date" id="to_date" value="{{ selected_to_date }}">
 
-                <br><br>
+                </div>
 
 
-                <button
-                    type="submit"
-                    class="btn-primary"
-                >
+                <button type="submit" class="view-btn">
                     View Attendance
                 </button>
-
 
             </form>
 
         </section>
 
 
-
         {% if selected_course %}
 
-        <!-- Attendance Summary -->
+        <!-- COURSE OVERVIEW -->
+        <section class="course-card">
 
-        <section class="dashboard-card">
+            <div class="course-info">
 
-            <h2>
-                {{ selected_course.course_name }}
-            </h2>
+                <span class="course-label">
+                    SELECTED COURSE
+                </span>
 
-            <p>
-                <strong>Course Code:</strong>
-                {{ selected_course.course_code }}
-            </p>
+                <h2>
+                    {{ selected_course.course_name }}
+                </h2>
 
-
-            <div class="attendance-summary">
-
-
-                <div class="attendance-box">
-
-                    <h3>
-                        Total Classes
-                    </h3>
-
-                    <p>
-                        {{ total_classes }}
-                    </p>
-
-                </div>
-
-
-                <div class="attendance-box">
-
-                    <h3>
-                        Present
-                    </h3>
-
-                    <p>
-                        {{ present_classes }}
-                    </p>
-
-                </div>
-
-
-                <div class="attendance-box">
-
-                    <h3>
-                        Absent
-                    </h3>
-
-                    <p>
-                        {{ absent_classes }}
-                    </p>
-
-                </div>
-
-
-                <div class="attendance-box">
-
-                    <h3>
-                        Attendance
-                    </h3>
-
-                    <p>
-                        {{ attendance_percentage }}%
-                    </p>
-
-                </div>
-
+                <p>
+                    Course Code:
+                    <strong>{{ selected_course.course_code }}</strong>
+                </p>
 
             </div>
 
         </section>
 
-        <!-- Attendance History -->
 
-        <section class="dashboard-card">
+        <!-- ATTENDANCE STATS -->
+        <section class="stats-grid">
 
-            <h2>
-                Attendance History
-            </h2>
+            <div class="stat-card">
+
+                <div class="stat-icon total-icon">
+                    #
+                </div>
+
+                <div>
+                    <span>Total Classes</span>
+                    <strong>{{ total_classes }}</strong>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon present-icon">
+                    ✓
+                </div>
+
+                <div>
+                    <span>Present</span>
+                    <strong>{{ present_classes }}</strong>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card">
+
+                <div class="stat-icon absent-icon">
+                    ×
+                </div>
+
+                <div>
+                    <span>Absent</span>
+                    <strong>{{ absent_classes }}</strong>
+                </div>
+
+            </div>
+
+
+            <div class="stat-card percentage-card">
+
+                <div class="percentage-content">
+
+                    <span>Attendance</span>
+
+                    <strong>
+                        {{ attendance_percentage }}%
+                    </strong>
+
+                </div>
+
+                <div class="percentage-bar">
+
+                    <div class="percentage-bar">
+                        <div class="percentage-fill"></div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- ATTENDANCE HISTORY -->
+        <section class="history-card">
+
+            <div class="history-header">
+
+                <div>
+                    <span class="section-label">
+                        RECORDS
+                    </span>
+
+                    <h2>Attendance History</h2>
+                </div>
+
+                {% if attendance_records %}
+                <span class="record-count">
+                    {{ attendance_records|length }} Records
+                </span>
+                {% endif %}
+
+            </div>
 
 
             {% if attendance_records %}
 
+            <div class="table-wrapper">
 
-                <div class="attendance-table">
+                <table>
 
-                    <table>
+                    <thead>
 
-                        <thead>
+                        <tr>
 
-                            <tr>
+                            <th>
+                                Date
+                            </th>
 
-                                <th>
-                                    Date
-                                </th>
+                            <th>
+                                Status
+                            </th>
 
-                                <th>
-                                    Status
-                                </th>
+                        </tr>
 
-                            </tr>
-
-                        </thead>
-
-
-                        <tbody>
+                    </thead>
 
 
-                            {% for record in attendance_records %}
+                    <tbody>
 
-                            <tr>
+                        {% for record in attendance_records %}
 
-                                <td>
-                                    {{ record.attendance_date }}
-                                </td>
+                        <tr>
 
-                                <td>
-                                    {{ record.status }}
-                                </td>
+                            <td class="attendance-date">
+                                {{ record.attendance_date }}
+                            </td>
 
-                            </tr>
+                            <td>
 
-                            {% endfor %}
+                                {% if record.status|lower == 'present' %}
 
+                                <span class="status present">
+                                    <span class="status-dot"></span>
+                                    Present
+                                </span>
 
-                        </tbody>
+                                {% else %}
 
-                    </table>
+                                <span class="status absent">
+                                    <span class="status-dot"></span>
+                                    Absent
+                                </span>
 
-                </div>
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
 
 
             {% else %}
 
+            <div class="empty-state">
+
+                <div class="empty-icon">
+                    —
+                </div>
+
+                <h3>No Attendance Records</h3>
+
                 <p>
-                    No attendance records found for the selected course
-                    and date range.
+                    No attendance records were found for the selected
+                    course and date range.
                 </p>
-
-            {% endif %}
-
-
-        </section>
-
-
-        {% endif %}
-
-        <!-- Back to Dashboard -->
-
-        <section class="dashboard-card">
-
-            <div class="dashboard-actions">
-
-                <a
-                    href="{{ url_for('student_dashboard') }}"
-                    class="btn-secondary"
-                >
-                    Back to Dashboard
-                </a>
 
             </div>
 
+            {% endif %}
+
         </section>
 
+        {% endif %}
+
+
+        <!-- BACK BUTTON -->
+        <div class="bottom-action">
+
+            <a href="{{ url_for('student_dashboard') }}" class="back-btn">
+                ← Back to Dashboard
+            </a>
+
+        </div>
 
     </main>
 
 
-
-    <footer class="footer">
+    <!-- FOOTER -->
+    <footer>
 
         <p>
-            &copy; 2026 AI Smart Attendance Management System.
+            © 2026 AI Smart Attendance Management System.
             All rights reserved.
         </p>
 
     </footer>
-
 
 </body>
 
