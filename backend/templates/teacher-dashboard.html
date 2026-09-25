@@ -4,131 +4,363 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Teacher Dashboard | AI Smart Attendance Management System</title>
 
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/style.css') }}">
+
+    <link rel="stylesheet"
+          href="{{ url_for('static', filename='css/teacher.css') }}">
 </head>
 
 <body>
 
+    <!-- Navbar -->
+
     <header class="navbar">
-        <div class="logo">AI Attendance System</div>
+
+        <div class="logo">
+            AI Attendance System
+        </div>
 
         <nav>
             <ul class="nav-links">
-                <li><a href="{{ url_for('home') }}">Home</a></li>
-                <li><a href="{{ url_for('teacher_dashboard') }}">Dashboard</a></li>
-                <li><a href="#">Courses</a></li>
-                <li><a href="#">Attendance</a></li>
+
+                <li>
+                    <a href="{{ url_for('home') }}">Home</a>
+                </li>
+
+                <li>
+                    <a href="{{ url_for('teacher_dashboard') }}">Dashboard</a>
+                </li>
+
+                <li>
+                    <a href="#">Courses</a>
+                </li>
+
+                <li>
+                    <a href="#">Attendance</a>
+                </li>
+
             </ul>
         </nav>
+
     </header>
 
 
-    <main class="dashboard-container">
+    <!-- Main Content -->
 
-        <section class="dashboard-header">
-            <h1>Welcome, {{ teacher.name }}!</h1>
-            <p>Manage your courses and student attendance.</p>
-        </section>
+    <main class="teacher-container">
 
+        <!-- Welcome -->
 
-        <section class="dashboard-card">
-            <h2>Teacher Profile</h2>
+        <section class="teacher-header">
 
-            <div class="student-details">
-                <p><strong>Name:</strong> {{ teacher.name }}</p>
-                <p><strong>Email:</strong> {{ teacher.email }}</p>
+            <div>
+                <span class="page-label">Teacher Panel</span>
+
+                <h1>
+                    Welcome, {{ teacher.name }}!
+                </h1>
+
+                <p>
+                    Manage your courses and student attendance.
+                </p>
             </div>
+
         </section>
 
-        <section class="dashboard-card">
-            <h2>My Courses</h2>
+
+        <!-- Teacher Profile -->
+
+        <section class="teacher-card profile-card">
+
+            <div class="card-heading">
+                <div class="heading-icon">👤</div>
+
+                <div>
+                    <h2>Teacher Profile</h2>
+                    <p>Your account information</p>
+                </div>
+            </div>
+
+            <div class="profile-details">
+
+                <div class="detail-box">
+                    <span>Name</span>
+                    <strong>{{ teacher.name }}</strong>
+                </div>
+
+                <div class="detail-box">
+                    <span>Email</span>
+                    <strong>{{ teacher.email }}</strong>
+                </div>
+
+            </div>
+
+        </section>
+
+
+        <!-- My Courses -->
+
+        <section class="teacher-card">
+
+            <div class="card-heading">
+
+                <div class="heading-icon">📚</div>
+
+                <div>
+                    <h2>My Courses</h2>
+                    <p>Courses assigned to you</p>
+                </div>
+
+            </div>
+
 
             {% if courses %}
-            {% for course in courses %}
-            <div class="course-item">
-                <h3>{{ course.course_name }}</h3>
-                <p>Course Code: {{ course.course_code }}</p>
+
+            <div class="course-grid">
+
+                {% for course in courses %}
+
+                <div class="course-box">
+
+                    <div class="course-icon">
+                        📖
+                    </div>
+
+                    <div>
+                        <h3>{{ course.course_name }}</h3>
+
+                        <p>
+                            Course Code:
+                            <strong>{{ course.course_code }}</strong>
+                        </p>
+                    </div>
+
+                </div>
+
+                {% endfor %}
+
             </div>
-            {% endfor %}
+
             {% else %}
-            <p>No courses added yet.</p>
+
+            <div class="empty-state">
+                <span>📚</span>
+                <p>No courses added yet.</p>
+            </div>
+
             {% endif %}
+
         </section>
 
-        <section class="dashboard-card">
-            <h2>Attendance Management</h2>
 
-            <div class="dashboard-actions">
-                <a href="{{ url_for('mark_attendance') }}" class="btn-primary">
+        <!-- Attendance Management -->
+
+        <section class="teacher-card">
+
+            <div class="card-heading">
+
+                <div class="heading-icon">📝</div>
+
+                <div>
+                    <h2>Attendance Management</h2>
+                    <p>Record attendance for your students</p>
+                </div>
+
+            </div>
+
+            <div class="action-box">
+
+                <div>
+                    <h3>Mark Student Attendance</h3>
+
+                    <p>
+                        Select a course and record attendance for enrolled students.
+                    </p>
+                </div>
+
+                <a href="{{ url_for('mark_attendance') }}"
+                   class="teacher-primary-btn">
                     Mark Attendance
                 </a>
 
             </div>
+
         </section>
 
-        <section class="dashboard-card">
-            <h2>Student Enrollment</h2>
 
-            <form method="POST" action="{{ url_for('manage_enrollments') }}">
+        <!-- Student Enrollment -->
 
-                <label for="course_id"><strong>Select Course:</strong></label>
+        <section class="teacher-card">
 
-                <select name="course_id" id="course_id" required>
-                    <option value="">-- Select Course --</option>
+            <div class="card-heading">
 
-                    {% for course in courses %}
-                    <option value="{{ course.course_id }}">
-                        {{ course.course_name }} ({{ course.course_code }})
-                    </option>
-                    {% endfor %}
-                </select>
+                <div class="heading-icon">👥</div>
 
-                <br><br>
+                <div>
+                    <h2>Student Enrollment</h2>
+                    <p>Enroll students into your courses</p>
+                </div>
 
-                <label><strong>Select Students:</strong></label>
+            </div>
+
+
+            <form method="POST"
+                  action="{{ url_for('manage_enrollments') }}"
+                  class="enrollment-form">
+
+
+                <!-- Course -->
+
+                <div class="form-group">
+
+                    <label for="course_id">
+                        Select Course
+                    </label>
+
+                    <select name="course_id"
+                            id="course_id"
+                            required>
+
+                        <option value="">
+                            -- Select Course --
+                        </option>
+
+                        {% for course in courses %}
+
+                        <option value="{{ course.course_id }}">
+                            {{ course.course_name }}
+                            ({{ course.course_code }})
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+                <!-- Students -->
+
+                <div class="student-selection">
+
+                    <label>
+                        Select Students
+                    </label>
+
+
+                    {% if students %}
+
+                    <div class="student-list">
+
+                        {% for student in students %}
+
+                        <label class="student-option">
+
+                            <input
+                                type="checkbox"
+                                name="student_ids"
+                                value="{{ student.student_id }}"
+                            >
+
+                            <span class="student-check"></span>
+
+                            <span class="student-info">
+
+                                <strong>
+                                    {{ student.name }}
+                                </strong>
+
+                                <small>
+                                    Roll No: {{ student.roll_number }}
+                                </small>
+
+                            </span>
+
+                        </label>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% else %}
+
+                    <div class="empty-state small">
+                        <span>👥</span>
+                        <p>No students registered yet.</p>
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
 
                 {% if students %}
-                {% for student in students %}
-                <div>
-                    <label>
-                        <input type="checkbox" name="student_ids" value="{{ student.student_id }}">
 
-                        {{ student.name }}
-                        ({{ student.roll_number }})
-                    </label>
-                </div>
-                {% endfor %}
-                {% else %}
-                <p>No students registered yet.</p>
-                {% endif %}
-
-                <br>
-
-                <button type="submit" class="btn-primary">
+                <button type="submit"
+                        class="teacher-primary-btn enroll-btn">
                     Enroll Selected Students
                 </button>
 
+                {% endif %}
+
             </form>
+
         </section>
 
 
-        <section class="dashboard-card">
-            <h2>Quick Actions</h2>
+        <!-- Quick Actions -->
 
-            <div class="dashboard-actions">
-                <a href="{{ url_for('manage_courses') }}" class="btn-primary">Manage Courses</a>
-                <a href="{{ url_for('teacher_logout') }}" class="btn-secondary">Logout</a>
-                <a href="{{ url_for('assistant') }}" class="btn-primary">AI Assistant</a>
+        <section class="teacher-card">
+
+            <div class="card-heading">
+
+                <div class="heading-icon">⚡</div>
+
+                <div>
+                    <h2>Quick Actions</h2>
+                    <p>Frequently used options</p>
+                </div>
+
             </div>
+
+
+            <div class="quick-actions">
+
+                <a href="{{ url_for('manage_courses') }}"
+                   class="teacher-primary-btn">
+                    Manage Courses
+                </a>
+
+                <a href="{{ url_for('assistant') }}"
+                   class="teacher-primary-btn">
+                    AI Assistant
+                </a>
+
+                <a href="{{ url_for('teacher_logout') }}"
+                   class="teacher-secondary-btn">
+                    Logout
+                </a>
+
+            </div>
+
         </section>
 
     </main>
 
 
+    <!-- Footer -->
+
     <footer class="footer">
-        <p>&copy; 2026 AI Smart Attendance Management System. All rights reserved.</p>
+
+        <p>
+            &copy; 2026 AI Smart Attendance Management System.
+            All rights reserved.
+        </p>
+
     </footer>
 
 </body>
