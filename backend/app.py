@@ -3,6 +3,10 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from google import genai
 from datetime import date
+import time
+import re
+from collections import defaultdict
+from google.genai import types
 from itsdangerous import URLSafeTimedSerializer, SignatureExpired, BadSignature
 from flask_mail import Mail, Message
 import mysql.connector
@@ -50,8 +54,37 @@ db = mysql.connector.connect(
 )
 # Gemini AI client
 client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
+    api_key=os.getenv("GEMINI_API_KEY"),
+    http_options=types.HttpOptions(timeout=15000)
 )
+def ask_gemini(prompt):
+
+    for model in ("gemini-3.8-flash", "gemini-3.7-flash"):
+
+        try:
+
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(
+                        thinking_level="low"
+                    )
+                )
+            )
+
+            if response and response.text:
+                return response.text.strip()
+
+            print(f"{model}: empty response")
+
+        except Exception as e:
+            print(
+                f"{model} error: "
+                f"{type(e).__name__}: {e}"
+            )
+
+    return None
 
 
 def send_low_attendance_email(student_name, student_email, course_name, percentage):
@@ -948,7 +981,11 @@ def assistant_ask():
             "response": "Please ask me something about attendance."
         })
 
+    message_lower = message.lower()
+
+    # =========================================================
     # STUDENT ASSISTANT
+    # =========================================================
 
     student_id = session.get("student_id")
 
@@ -956,7 +993,10 @@ def assistant_ask():
 
         cursor = db.cursor(dictionary=True)
 
-        # Get student's attendance summary
+        # -----------------------------------------------------
+        # Overall attendance
+        # -----------------------------------------------------
+
         cursor.execute(
             """
             SELECT
@@ -987,12 +1027,26 @@ def assistant_ask():
 
         overall = cursor.fetchone()
 
-        # Get subject-wise attendance
+        total_classes = int(overall["total_classes"] or 0)
+        present_classes = int(overall["present_classes"] or 0)
+        absent_classes = int(overall["absent_classes"] or 0)
+
+        if total_classes > 0:
+            overall_percentage = round(
+                (present_classes / total_classes) * 100,
+                2
+            )
+        else:
+            overall_percentage = 0
+
+        # -----------------------------------------------------
+        # Subject-wise attendance
+        # -----------------------------------------------------
+
         cursor.execute(
             """
             SELECT
                 c.course_name AS subject,
-
                 COUNT(a.attendance_id) AS total_classes,
 
                 SUM(
@@ -1019,8 +1073,7 @@ def assistant_ask():
                                 THEN 1
                                 ELSE 0
                             END
-                        )
-                        / COUNT(a.attendance_id)
+                        ) / COUNT(a.attendance_id)
                     ) * 100,
                     2
                 ) AS attendance_percentage
@@ -1041,104 +1094,393 @@ def assistant_ask():
 
         subject_attendance = cursor.fetchall()
 
-        # Get attendance history
-        cursor.execute(
-            """
-            SELECT
-                c.course_name AS subject,
-                a.attendance_date,
-                a.status
+        # -----------------------------------------------------
+        # Detect questions that need advice / explanation
+        # -----------------------------------------------------
 
-            FROM attendance a
-
-            INNER JOIN courses c
-                ON a.course_id = c.course_id
-
-            WHERE a.student_id = %s
-
-            ORDER BY a.attendance_date DESC
-            """,
-            (student_id,)
+        advice_words = (
+            "improve",
+            "how can",
+            "how do",
+            "how to",
+            "why",
+            "should",
+            "if i",
+            "can i",
+            "need to",
+            "what should"
         )
 
-        attendance_history = cursor.fetchall()
+        is_advice = any(
+            word in message_lower
+            for word in advice_words
+        )
 
-        cursor.close()
+        # -----------------------------------------------------
+        # Check whether a specific subject was mentioned
+        # -----------------------------------------------------
 
-        total_classes = overall["total_classes"] or 0
-        present_classes = overall["present_classes"] or 0
-        absent_classes = overall["absent_classes"] or 0
+        mentions_subject = any(
+            str(subject["subject"]).lower() in message_lower
+            for subject in subject_attendance
+        )
 
-        if total_classes > 0:
-            overall_percentage = round(
-                (present_classes / total_classes) * 100,
-                2
+        # Direct shortcuts should NOT hijack:
+        # - advice questions
+        # - subject-specific questions
+        use_shortcuts = not is_advice and not mentions_subject
+
+        # =====================================================
+        # DIRECT STUDENT ANSWERS
+        # =====================================================
+
+        # -----------------------------------------------------
+        # 1. Overall attendance
+        # -----------------------------------------------------
+
+        overall_keywords = [
+            "overall attendance",
+            "my attendance percentage",
+            "my attendance %",
+            "overall percentage",
+            "what is my attendance",
+            "what's my attendance",
+            "how much attendance do i have"
+        ]
+
+        if (
+            use_shortcuts
+            and any(
+                keyword in message_lower
+                for keyword in overall_keywords
             )
-        else:
-            overall_percentage = 0
+        ):
 
-        attendance_data = f"""
-        Overall Attendance:
-        Total classes: {total_classes}
-        Present classes: {present_classes}
-        Absent classes: {absent_classes}
-        Overall percentage: {overall_percentage}%
-
-        Subject-wise Attendance:
-        {subject_attendance}
-
-        Attendance History:
-        {attendance_history}
-        """
-
-        prompt = f"""
-        You are the AI Assistant of an AI Smart Attendance Management System.
-
-        The logged-in user is a STUDENT.
-
-        Answer the student's question using ONLY the attendance data
-        provided below.
-
-        Student Attendance Data:
-        {attendance_data}
-
-        Student Question:
-        {message}
-
-        Rules:
-        1. Give a simple and clear answer.
-        2. Do not make up attendance information.
-        3. For subject-wise questions, use the subject-wise data.
-        4. For history questions, use the attendance history.
-        5. If the student asks about their lowest or highest attendance,
-           compare the subject-wise percentages.
-        6. If the student asks whether their attendance is good,
-           explain their percentage clearly.
-        7. If the question is unrelated to attendance,
-           politely say that you mainly help with attendance-related queries.
-        """
-
-        try:
-
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=prompt
-            )
-
-            return jsonify({
-                "response": response.text
-            })
-
-        except Exception as e:
-
-            print("Gemini Error:", e)
+            cursor.close()
 
             return jsonify({
                 "response":
-                    "Sorry, I could not connect to the AI Assistant right now."
-            }), 500
+                    f"Your overall attendance is "
+                    f"{overall_percentage}%. "
+                    f"You have attended "
+                    f"{present_classes} out of "
+                    f"{total_classes} classes."
+            })
 
+        # -----------------------------------------------------
+        # 2. Lowest attendance subject
+        # -----------------------------------------------------
+
+        lowest_keywords = [
+            "lowest attendance",
+            "least attendance",
+            "lowest percentage",
+            "worst attendance",
+            "which subject has low attendance",
+            "which subject has the lowest",
+            "where is my attendance low",
+            "which subject is low"
+        ]
+
+        if (
+            use_shortcuts
+            and any(
+                keyword in message_lower
+                for keyword in lowest_keywords
+            )
+        ):
+
+            if subject_attendance:
+
+                lowest_subject = min(
+                    subject_attendance,
+                    key=lambda x: x["attendance_percentage"]
+                )
+
+                cursor.close()
+
+                return jsonify({
+                    "response":
+                        f"Your lowest attendance is in "
+                        f"{lowest_subject['subject']} "
+                        f"with "
+                        f"{lowest_subject['attendance_percentage']}%."
+                })
+
+            else:
+
+                cursor.close()
+
+                return jsonify({
+                    "response":
+                        "I could not find any subject-wise "
+                        "attendance data."
+                })
+
+        # -----------------------------------------------------
+        # 3. Highest attendance subject
+        # -----------------------------------------------------
+
+        highest_keywords = [
+            "highest attendance",
+            "best attendance",
+            "highest percentage",
+            "which subject has highest",
+            "which subject is highest"
+        ]
+
+        if (
+            use_shortcuts
+            and any(
+                keyword in message_lower
+                for keyword in highest_keywords
+            )
+        ):
+
+            if subject_attendance:
+
+                highest_subject = max(
+                    subject_attendance,
+                    key=lambda x: x["attendance_percentage"]
+                )
+
+                cursor.close()
+
+                return jsonify({
+                    "response":
+                        f"Your highest attendance is in "
+                        f"{highest_subject['subject']} "
+                        f"with "
+                        f"{highest_subject['attendance_percentage']}%."
+                })
+
+            else:
+
+                cursor.close()
+
+                return jsonify({
+                    "response":
+                        "I could not find any subject-wise "
+                        "attendance data."
+                })
+
+        # -----------------------------------------------------
+        # 4. Subject-wise attendance
+        # -----------------------------------------------------
+
+        subject_keywords = [
+            "subject wise attendance",
+            "subject-wise attendance",
+            "attendance of all subjects",
+            "attendance in all subjects",
+            "attendance for each subject",
+            "attendance by subject"
+        ]
+
+        if (
+            use_shortcuts
+            and any(
+                keyword in message_lower
+                for keyword in subject_keywords
+            )
+        ):
+
+            if subject_attendance:
+
+                response_text = (
+                    "Your subject-wise attendance is:\n"
+                )
+
+                for subject in subject_attendance:
+
+                    response_text += (
+                        f"\n• {subject['subject']}: "
+                        f"{subject['attendance_percentage']}%"
+                    )
+
+                cursor.close()
+
+                return jsonify({
+                    "response": response_text
+                })
+
+            else:
+
+                cursor.close()
+
+                return jsonify({
+                    "response":
+                        "I could not find subject-wise "
+                        "attendance data."
+                })
+
+        # =====================================================
+        # ATTENDANCE HISTORY
+        # =====================================================
+
+        history_keywords = [
+            "history",
+            "attendance history",
+            "attendance record",
+            "attendance records",
+            "when was i present",
+            "when was i absent",
+            "which dates",
+            "date wise",
+            "date-wise"
+        ]
+
+        needs_history = any(
+            keyword in message_lower
+            for keyword in history_keywords
+        )
+
+        attendance_history = []
+
+        if needs_history:
+
+            cursor.execute(
+                """
+                SELECT
+                    c.course_name AS subject,
+                    a.attendance_date,
+                    a.status
+
+                FROM attendance a
+
+                INNER JOIN courses c
+                    ON a.course_id = c.course_id
+
+                WHERE a.student_id = %s
+
+                ORDER BY a.attendance_date DESC
+                """,
+                (student_id,)
+            )
+
+            attendance_history = cursor.fetchall()
+
+        # =====================================================
+        # COMPACT STUDENT CONTEXT
+        # =====================================================
+
+        student_lines = [
+            f"Overall attendance: "
+            f"{present_classes}/{total_classes} "
+            f"({overall_percentage}%).",
+
+            f"Present classes: {present_classes}.",
+            f"Absent classes: {absent_classes}.",
+            "Required minimum attendance: 75%."
+        ]
+
+        for subject in subject_attendance:
+
+            total = int(subject["total_classes"] or 0)
+            present = int(subject["present_classes"] or 0)
+            percentage = float(
+                subject["attendance_percentage"] or 0
+            )
+
+            # Classes required consecutively to reach 75%
+            needed = max(
+                0,
+                (3 * total) - (4 * present)
+            )
+
+            # Classes that can still be missed
+            can_miss = max(
+                0,
+                (4 * present) // 3 - total
+            )
+
+            student_lines.append(
+                f"{subject['subject']}: "
+                f"{present}/{total} classes present "
+                f"({percentage}%). "
+                f"Needs approximately {needed} "
+                f"consecutive present classes to reach 75%. "
+                f"Can currently miss approximately "
+                f"{can_miss} class(es) while staying at or above 75%."
+            )
+
+        attendance_data = "\n".join(student_lines)
+
+        # -----------------------------------------------------
+        # Add history only when question actually needs it
+        # -----------------------------------------------------
+
+        if needs_history:
+
+            history_lines = []
+
+            for record in attendance_history:
+
+                history_lines.append(
+                    f"{record['subject']} - "
+                    f"{record['attendance_date']} - "
+                    f"{record['status']}"
+                )
+
+            attendance_data += (
+                "\n\nAttendance History:\n"
+                + "\n".join(history_lines)
+            )
+
+        cursor.close()
+
+        # =====================================================
+        # STUDENT GEMINI PROMPT
+        # =====================================================
+
+        prompt = f"""
+You are the AI Assistant of an AI Smart Attendance Management System.
+
+The logged-in user is a STUDENT.
+
+Answer the student's question using ONLY the attendance
+information provided below.
+
+Student Attendance Data:
+{attendance_data}
+
+Student Question:
+{message}
+
+Rules:
+1. Give a short, simple and clear answer.
+2. Do not make up attendance information.
+3. Use only the provided attendance data.
+4. You may calculate percentages or attendance requirements
+   using the provided numbers.
+5. If the student asks how to improve attendance, give
+   practical advice based on their actual attendance data.
+6. If a specific subject is mentioned, focus on that subject.
+7. If the question is unrelated to attendance, politely say
+   that you mainly help with attendance-related queries.
+"""
+
+        # =====================================================
+        # GEMINI
+        # =====================================================
+
+        answer = ask_gemini(prompt)
+
+        if answer:
+
+            return jsonify({
+                "response": answer
+            })
+
+        return jsonify({
+            "response":
+                "The AI Assistant is temporarily busy. "
+                "Please try again in a moment."
+        }), 503
+
+    # =========================================================
     # TEACHER ASSISTANT
+    # =========================================================
 
     teacher_id = session.get("teacher_id")
 
@@ -1146,7 +1488,10 @@ def assistant_ask():
 
         cursor = db.cursor(dictionary=True)
 
-        # Get teacher's courses
+        # -----------------------------------------------------
+        # Teacher courses
+        # -----------------------------------------------------
+
         cursor.execute(
             """
             SELECT
@@ -1165,16 +1510,77 @@ def assistant_ask():
 
         courses = cursor.fetchall()
 
-        # Get attendance data for teacher's courses
+        # =====================================================
+        # DIRECT TEACHER COURSE ANSWER
+        # =====================================================
+
+        course_question_keywords = [
+            "what courses do i have",
+            "which courses do i have",
+            "my courses",
+            "my subjects",
+            "which subjects do i teach",
+            "what subjects do i teach",
+            "list my courses"
+        ]
+
+        if any(
+            keyword in message_lower
+            for keyword in course_question_keywords
+        ):
+
+            if courses:
+
+                response_text = "You have these courses:\n"
+
+                for course in courses:
+
+                    response_text += (
+                        f"\n• {course['course_name']} "
+                        f"({course['course_code']})"
+                    )
+
+                cursor.close()
+
+                return jsonify({
+                    "response": response_text
+                })
+
+            else:
+
+                cursor.close()
+
+                return jsonify({
+                    "response":
+                        "You currently do not have any "
+                        "courses assigned."
+                })
+
+        # =====================================================
+        # TEACHER ATTENDANCE SUMMARY
+        # =====================================================
+        # IMPORTANT:
+        # Unlike the old route, attendance summary is ALWAYS
+        # loaded so Gemini can answer general questions too.
+
         cursor.execute(
             """
             SELECT
-                c.course_name AS subject,
-                c.course_code,
+                s.student_id,
                 s.name AS student_name,
                 s.roll_number,
-                a.attendance_date,
-                a.status
+                c.course_id,
+                c.course_name AS subject,
+
+                COUNT(a.attendance_id) AS total_classes,
+
+                SUM(
+                    CASE
+                        WHEN a.status = 'Present'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) AS present_classes
 
             FROM attendance a
 
@@ -1186,80 +1592,349 @@ def assistant_ask():
 
             WHERE a.teacher_id = %s
 
-            ORDER BY a.attendance_date DESC
+            GROUP BY
+                s.student_id,
+                s.name,
+                s.roll_number,
+                c.course_id,
+                c.course_name
+
+            ORDER BY
+                c.course_name,
+                s.name
             """,
             (teacher_id,)
         )
 
-        teacher_attendance = cursor.fetchall()
+        attendance_rows = cursor.fetchall()
 
-        cursor.close()
+        # -----------------------------------------------------
+        # Build compact teacher summary
+        # -----------------------------------------------------
 
-        today = date.today()
+        by_course = defaultdict(list)
 
-        teacher_data = f"""
-        Today's Date:
-        {today}
+        for row in attendance_rows:
 
-        Teacher's Courses:
-        {courses}
+            total = int(row["total_classes"] or 0)
+            present = int(row["present_classes"] or 0)
 
-        Attendance Records:
-        {teacher_attendance}
-        """
+            if total > 0:
+                percentage = round(
+                    (present / total) * 100,
+                    1
+                )
+            else:
+                percentage = 0
 
-        prompt = f"""
-        You are the AI Assistant of an AI Smart Attendance Management System.
-
-        The logged-in user is a TEACHER.
-
-        Answer the teacher's question using ONLY the data provided below.
-
-        Teacher Data:
-        {teacher_data}
-
-        Teacher Question:
-        {message}
-
-        Rules:
-        1. Give a simple and clear answer.
-        2. Do not make up student, course or attendance information.
-        3. For course questions, use the teacher's course data.
-        4. For student attendance questions, use the attendance records.
-        5. For low attendance questions, identify students with attendance
-           below 75% when enough data is available.
-        6. For date-wise questions, use the attendance date.
-        7. If the question is unrelated to attendance or the teacher's
-           courses, politely say that you mainly help with attendance
-           management queries.
-        8. When the teacher asks about today's attendance, use Today's Date provided above
-           and match it with the attendance_date in the records.
-        """
-
-        try:
-
-            response = client.models.generate_content(
-                model="gemini-3.6-flash",
-                contents=prompt
-            )
-
-            return jsonify({
-                "response": response.text
+            by_course[row["subject"]].append({
+                "student_name": row["student_name"],
+                "roll_number": row["roll_number"],
+                "percentage": percentage
             })
 
-        except Exception as e:
+        teacher_summary_lines = []
 
-            print("Gemini Error:", e)
+        for subject, students in by_course.items():
+
+            if students:
+
+                average = round(
+                    sum(
+                        student["percentage"]
+                        for student in students
+                    ) / len(students),
+                    1
+                )
+
+                low_students = [
+                    student
+                    for student in students
+                    if student["percentage"] < 75
+                ]
+
+                teacher_summary_lines.append(
+                    f"{subject}: "
+                    f"{len(students)} students, "
+                    f"class average {average}%, "
+                    f"{len(low_students)} below 75%."
+                )
+
+                # Give Gemini useful student-level data,
+                # but don't dump unlimited records.
+                for student in sorted(
+                    low_students,
+                    key=lambda x: x["percentage"]
+                )[:15]:
+
+                    teacher_summary_lines.append(
+                        f"  - "
+                        f"{student['student_name']} "
+                        f"({student['roll_number']}): "
+                        f"{student['percentage']}%"
+                    )
+
+        teacher_summary = "\n".join(
+            teacher_summary_lines
+        )
+
+        if not teacher_summary:
+
+            teacher_summary = (
+                "No attendance summary is currently available."
+            )
+
+        # =====================================================
+        # TEACHER LOW ATTENDANCE DIRECT ANSWER
+        # =====================================================
+
+        low_attendance_keywords = [
+            "low attendance",
+            "below 75",
+            "below 75%",
+            "less than 75",
+            "under 75",
+            "students below",
+            "students with low attendance"
+        ]
+
+        teacher_advice_words = (
+            "improve",
+            "how can",
+            "how do",
+            "how to",
+            "why",
+            "should",
+            "if i",
+            "can i",
+            "need to",
+            "what should"
+        )
+
+        teacher_is_advice = any(
+            word in message_lower
+            for word in teacher_advice_words
+        )
+
+        needs_low_attendance = (
+            not teacher_is_advice
+            and any(
+                keyword in message_lower
+                for keyword in low_attendance_keywords
+            )
+        )
+
+        if needs_low_attendance:
+
+            low_attendance_students = []
+
+            for subject, students in by_course.items():
+
+                for student in students:
+
+                    if student["percentage"] < 75:
+
+                        low_attendance_students.append({
+                            "student_name":
+                                student["student_name"],
+
+                            "roll_number":
+                                student["roll_number"],
+
+                            "subject":
+                                subject,
+
+                            "attendance_percentage":
+                                student["percentage"]
+                        })
+
+            cursor.close()
+
+            if low_attendance_students:
+
+                response_text = (
+                    "Students with attendance below 75%:\n"
+                )
+
+                for student in sorted(
+                    low_attendance_students,
+                    key=lambda x: x["attendance_percentage"]
+                ):
+
+                    response_text += (
+                        f"\n• {student['student_name']} "
+                        f"({student['roll_number']}) - "
+                        f"{student['subject']}: "
+                        f"{student['attendance_percentage']}%"
+                    )
+
+                return jsonify({
+                    "response": response_text
+                })
 
             return jsonify({
                 "response":
-                    "Sorry, I could not connect to the AI Assistant right now."
-            }), 500
+                    "No students currently have "
+                    "attendance below 75%."
+            })
+
+        # =====================================================
+        # TEACHER DATE QUESTIONS
+        # =====================================================
+
+        # IMPORTANT:
+        # Do NOT use "date" substring matching because words
+        # like "candidate" / "update" can accidentally match.
+
+        needs_date_data = bool(
+            re.search(
+                r"\b(?:today|yesterday|dates?)\b",
+                message_lower
+            )
+            or "attendance on" in message_lower
+            or "present today" in message_lower
+            or "absent today" in message_lower
+        )
+
+        teacher_attendance = []
+
+        if needs_date_data:
+
+            cursor.execute(
+                """
+                SELECT
+                    c.course_name AS subject,
+                    c.course_code,
+                    s.name AS student_name,
+                    s.roll_number,
+                    a.attendance_date,
+                    a.status
+
+                FROM attendance a
+
+                INNER JOIN courses c
+                    ON a.course_id = c.course_id
+
+                INNER JOIN students s
+                    ON a.student_id = s.student_id
+
+                WHERE
+                    a.teacher_id = %s
+                    AND a.attendance_date >=
+                        CURDATE() - INTERVAL 30 DAY
+
+                ORDER BY a.attendance_date DESC
+
+                LIMIT 300
+                """,
+                (teacher_id,)
+            )
+
+            teacher_attendance = cursor.fetchall()
+
+        cursor.close()
+
+        # =====================================================
+        # COMPACT TEACHER DATA
+        # =====================================================
+
+        teacher_data = f"""
+Today's Date:
+{date.today()}
+
+Teacher's Courses:
+"""
+
+        for course in courses:
+
+            teacher_data += (
+                f"- {course['course_name']} "
+                f"({course['course_code']})\n"
+            )
+
+        teacher_data += f"""
+
+Attendance Summary:
+{teacher_summary}
+"""
+
+        # -----------------------------------------------------
+        # Add detailed date records only when necessary
+        # -----------------------------------------------------
+
+        if needs_date_data:
+
+            teacher_data += "\nAttendance Records:\n"
+
+            for record in teacher_attendance:
+
+                teacher_data += (
+                    f"- {record['subject']} "
+                    f"({record['course_code']}) | "
+                    f"{record['student_name']} "
+                    f"({record['roll_number']}) | "
+                    f"{record['attendance_date']} | "
+                    f"{record['status']}\n"
+                )
+
+        # =====================================================
+        # TEACHER GEMINI PROMPT
+        # =====================================================
+
+        prompt = f"""
+You are the AI Assistant of an AI Smart Attendance Management System.
+
+The logged-in user is a TEACHER.
+
+Answer the teacher's question using ONLY the data provided below.
+
+Teacher Data:
+{teacher_data}
+
+Teacher Question:
+{message}
+
+Rules:
+1. Give a short, simple and clear answer.
+2. Do not make up student, course or attendance information.
+3. Use only the provided data.
+4. You may calculate simple values using the provided data.
+5. If the teacher asks about student performance,
+   use the attendance summary.
+6. If the teacher asks about improving attendance,
+   give practical suggestions based on the provided data.
+7. For date questions, use the attendance records and
+   attendance dates provided.
+8. If the question is unrelated to attendance or courses,
+   politely say that you mainly help with attendance management.
+"""
+
+        # =====================================================
+        # GEMINI
+        # =====================================================
+
+        answer = ask_gemini(prompt)
+
+        if answer:
+
+            return jsonify({
+                "response": answer
+            })
+
+        return jsonify({
+            "response":
+                "The AI Assistant is temporarily busy. "
+                "Please try again in a moment."
+        }), 503
+
+    # =========================================================
+    # NOT LOGGED IN
+    # =========================================================
 
     return jsonify({
         "response": "Please login first."
     }), 401
-
+    
 @app.route("/register")
 def register():
     return render_template("register.html")
