@@ -551,3 +551,96 @@ body {
         padding: 30px 24px;
     }
 }
+
+
+/* =========================
+   TEACHER STREAM SELECTION
+   ========================= */
+
+.stream-options {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 10px;
+    margin-bottom: 22px;
+}
+
+.stream-options label {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    gap: 10px;
+    margin: 0 !important;
+    padding: 12px 14px;
+    border: 1px solid #dfe3ea;
+    border-radius: 10px;
+    background: #f8f9fb;
+    cursor: pointer;
+    font-size: 14px;
+    color: #374151;
+    transition: 0.2s ease;
+}
+
+.stream-options label:hover {
+    border-color: #6366f1;
+    background: #f3f4ff;
+}
+
+.stream-options input[type="checkbox"] {
+    width: 17px !important;
+    height: 17px !important;
+    margin: 0 !important;
+    accent-color: #6366f1;
+    cursor: pointer;
+}
+
+@media (max-width: 600px) {
+    .stream-options {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* =========================
+   STUDENT STREAM DROPDOWN
+   ========================= */
+
+label[for="stream_id"] {
+    display: block !important;
+    width: 100%;
+    margin-bottom: 8px !important;
+    text-align: left !important;
+    font-size: 14px;
+    font-weight: 600 !important;
+    color: #374151;
+}
+
+#stream_id {
+    display: block !important;
+    width: 100% !important;
+    height: 44px;
+    padding: 10px 14px !important;
+    margin: 0 !important;
+    border: 1px solid #dfe3ea;
+    border-radius: 10px;
+    background: #ffffff;
+    color: #374151;
+    font-size: 14px;
+    text-align: left !important;
+    outline: none;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+#stream_id:hover {
+    border-color: #6366f1;
+}
+
+#stream_id:focus {
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+#stream_id option {
+    background: #ffffff;
+    color: #374151;
+}

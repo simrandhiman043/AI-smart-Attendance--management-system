@@ -25,9 +25,10 @@ def register_teacher():
     name = request.form.get('name')
     email = request.form.get('email')
     password = request.form.get('password')
+    stream_ids = request.form.getlist('stream_ids')
 
-    if not all([name, email, password]):
-        return jsonify({"error": "All fields are required."}), 400
+    if not all([name, email, password]) or not stream_ids:
+         return jsonify({"error": "All fields are required."}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -49,6 +50,16 @@ def register_teacher():
         (name, email, hashed_password)
     )
 
+    teacher_id = cursor.lastrowid
+
+    for stream_id in stream_ids:
+        cursor.execute(
+            """
+            INSERT INTO teacher_streams (teacher_id, stream_id)
+            VALUES (%s, %s)
+            """,
+            (teacher_id, stream_id)
+        )
     conn.commit()
 
     cursor.close()

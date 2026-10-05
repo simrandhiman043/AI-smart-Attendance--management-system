@@ -27,8 +27,9 @@ def register_student():
     password = request.form.get('password')
     roll_number = request.form.get('roll_number')
     semester = request.form.get('semester')
+    stream_id = request.form.get('stream_id')
 
-    if not all([name, email, password, roll_number, semester]):
+    if not all([name, email, password, roll_number, semester, stream_id]):
         return jsonify({"error": "All fields are required."}), 400
 
     conn = get_db_connection()
@@ -57,9 +58,9 @@ def register_student():
     hashed_password = generate_password_hash(password)
 
     cursor.execute(
-        "INSERT INTO students (name, email, password, roll_number, semester) "
-        "VALUES (%s, %s, %s, %s, %s)",
-        (name, email, hashed_password, roll_number, semester)
+        "INSERT INTO students (name, email, password, roll_number, semester, stream_id) "
+        "VALUES (%s, %s, %s, %s, %s, %s)",
+        (name, email, hashed_password, roll_number, semester, stream_id)
     )
 
     conn.commit()

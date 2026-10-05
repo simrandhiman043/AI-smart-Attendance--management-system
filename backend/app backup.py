@@ -53,145 +53,39 @@ db = mysql.connector.connect(
     autocommit=True
 )
 # Gemini AI client
-# 10 seconds is the minimum deadline accepted by the Gemini API.
 client = genai.Client(
     api_key=os.getenv("GEMINI_API_KEY"),
-    http_options=types.HttpOptions(timeout=10000)
+    http_options=types.HttpOptions(timeout=15000)
 )
-
-
 def ask_gemini(prompt):
-    """Use one fast Gemini model only; do not wait for a second fallback call."""
-    try:
-        response = client.models.generate_content(
-            model="gemini-3.1-flash-lite",
-            contents=prompt,
-            config=types.GenerateContentConfig(
-                temperature=0.1,
-                max_output_tokens=120,
-                thinking_config=types.ThinkingConfig(
-                    thinking_level="minimal"
+
+    for model in ("gemini-3.8-flash", "gemini-3.7-flash"):
+
+        try:
+
+            response = client.models.generate_content(
+                model=model,
+                contents=prompt,
+                config=types.GenerateContentConfig(
+                    thinking_config=types.ThinkingConfig(
+                        thinking_level="low"
+                    )
                 )
             )
-        )
 
-        if response and response.text:
-            print("Gemini response from gemini-3.1-flash-lite")
-            return response.text.strip()
+            if response and response.text:
+                return response.text.strip()
 
-        print("gemini-3.1-flash-lite: empty response")
+            print(f"{model}: empty response")
 
-    except Exception as e:
-        print(
-            "gemini-3.1-flash-lite error: "
-            f"{type(e).__name__}: {e}"
-        )
+        except Exception as e:
+            print(
+                f"{model} error: "
+                f"{type(e).__name__}: {e}"
+            )
 
     return None
 
-
-def local_student_answer(message_lower, overall_percentage, present_classes, total_classes, subject_attendance, attendance_history, needs_history):
-    """Answer common attendance questions instantly without calling Gemini."""
-
-    # Recent/history questions are deterministic from the database.
-    if needs_history:
-        if not attendance_history:
-            return "I could not find any recent attendance history."
-
-        lines = ["Here is your recent attendance history:"]
-        for record in attendance_history[:15]:
-            lines.append(
-                f"• {record['subject']} — {record['attendance_date']} — {record['status']}"
-            )
-        return "\n".join(lines)
-
-    # Advice questions: calculate from the actual attendance data.
-    advice_words = (
-        "improve", "how can", "how do", "how to",
-        "what should", "need to improve", "fix my attendance",
-        "increase my attendance", "raise my attendance",
-        "maintain good attendance", "maintain attendance",
-        "keep my attendance", "keep attendance",
-        "good attendance", "practical ways", "attendance tips",
-        "attendance advice", "ways to maintain", "ways to improve",
-        "tips to maintain", "tips for attendance",
-        "stay above 75", "stay above 75%"
-    )
-
-    # Treat broad attendance-maintenance/improvement wording as one intent.
-    # This is intentionally intent-based, not a list of exact questions.
-    general_advice_intent = bool(
-        re.search(
-            r"\\b(attendance|attend)\\b.*\\b("
-            r"improv|maintain|keep|increase|raise|better|"
-            r"tips?|advice|ways|strateg|regular|"
-            r"avoid|stay|good|semester"
-            r")\\b",
-            message_lower
-        )
-        or
-        re.search(
-            r"\\b("
-            r"improv|maintain|keep|increase|raise|better|"
-            r"tips?|advice|ways|strateg|regular|avoid|stay"
-            r")\\b.*\\b(attendance|attend)\\b",
-            message_lower
-        )
-    )
-
-    if any(word in message_lower for word in advice_words) or general_advice_intent:
-        mentioned = [
-            subject for subject in subject_attendance
-            if str(subject["subject"]).lower() in message_lower
-        ]
-
-        if mentioned:
-            target = min(mentioned, key=lambda x: float(x["attendance_percentage"] or 0))
-            total = int(target["total_classes"] or 0)
-            present = int(target["present_classes"] or 0)
-            pct = float(target["attendance_percentage"] or 0)
-
-            if pct < 75:
-                needed = max(0, (3 * total) - (4 * present))
-                return (
-                    f"Your {target['subject']} attendance is {pct}%. "
-                    f"You need to attend the next {needed} class(es) consecutively "
-                    f"to reach 75%. Try not to miss upcoming classes."
-                )
-
-            return (
-                f"Your {target['subject']} attendance is {pct}%, which is above 75%. "
-                f"Keep attending regularly so it stays above the required level."
-            )
-
-        # General attendance improvement.
-        weak = [
-            subject for subject in subject_attendance
-            if float(subject["attendance_percentage"] or 0) < 75
-        ]
-
-        if weak:
-            weak.sort(key=lambda x: float(x["attendance_percentage"] or 0))
-            target = weak[0]
-            total = int(target["total_classes"] or 0)
-            present = int(target["present_classes"] or 0)
-            pct = float(target["attendance_percentage"] or 0)
-            needed = max(0, (3 * total) - (4 * present))
-
-            return (
-                f"Your overall attendance is {overall_percentage}%. "
-                f"Your weakest subject is {target['subject']} at {pct}%. "
-                f"To improve, attend your upcoming classes regularly and avoid absences. "
-                f"For {target['subject']}, you need about {needed} consecutive present "
-                f"classes to reach 75%."
-            )
-
-        return (
-            f"Your overall attendance is {overall_percentage}%, which is at or above 75%. "
-            "Keep attending classes regularly and avoid unnecessary absences."
-        )
-
-    return None
 
 def send_low_attendance_email(student_name, student_email, course_name, percentage):
 
@@ -1460,7 +1354,6 @@ def assistant_ask():
                 WHERE a.student_id = %s
 
                 ORDER BY a.attendance_date DESC
-                LIMIT 100
                 """,
                 (student_id,)
             )
@@ -1534,25 +1427,6 @@ def assistant_ask():
                 + "\n".join(history_lines)
             )
 
-        # =====================================================
-        # INSTANT STUDENT ANSWERS
-        # =====================================================
-        # Common attendance questions should not wait for Gemini.
-        # We still keep Gemini for genuinely open-ended questions.
-        local_answer = local_student_answer(
-            message_lower,
-            overall_percentage,
-            present_classes,
-            total_classes,
-            subject_attendance,
-            attendance_history,
-            needs_history
-        )
-
-        if local_answer:
-            cursor.close()
-            return jsonify({"response": local_answer})
-
         cursor.close()
 
         # =====================================================
@@ -1564,10 +1438,8 @@ You are the AI Assistant of an AI Smart Attendance Management System.
 
 The logged-in user is a STUDENT.
 
-Answer the student's attendance-related question using ONLY
-the attendance information provided below. The question may be
-phrased in any natural way; understand its intent from the
-question and use the relevant data.
+Answer the student's question using ONLY the attendance
+information provided below.
 
 Student Attendance Data:
 {attendance_data}
@@ -1579,8 +1451,8 @@ Rules:
 1. Give a short, simple and clear answer.
 2. Do not make up attendance information.
 3. Use only the provided attendance data.
-4. You may calculate percentages, required classes, or other
-   simple attendance-related values using the provided numbers.
+4. You may calculate percentages or attendance requirements
+   using the provided numbers.
 5. If the student asks how to improve attendance, give
    practical advice based on their actual attendance data.
 6. If a specific subject is mentioned, focus on that subject.
@@ -1747,16 +1619,17 @@ Rules:
             total = int(row["total_classes"] or 0)
             present = int(row["present_classes"] or 0)
 
-            percentage = (
-                round((present / total) * 100, 1)
-                if total > 0 else 0
-            )
+            if total > 0:
+                percentage = round(
+                    (present / total) * 100,
+                    1
+                )
+            else:
+                percentage = 0
 
             by_course[row["subject"]].append({
                 "student_name": row["student_name"],
                 "roll_number": row["roll_number"],
-                "total_classes": total,
-                "present_classes": present,
                 "percentage": percentage
             })
 
@@ -1764,42 +1637,46 @@ Rules:
 
         for subject, students in by_course.items():
 
-            if not students:
-                continue
+            if students:
 
-            average = round(
-                sum(student["percentage"] for student in students)
-                / len(students),
-                1
-            )
-
-            low_count = sum(
-                1 for student in students
-                if student["percentage"] < 75
-            )
-
-            teacher_summary_lines.append(
-                f"{subject}: {len(students)} students, "
-                f"class average {average}%, "
-                f"{low_count} below 75%."
-            )
-
-            # Keep useful student-level information without dumping
-            # an unlimited amount of attendance data into Gemini.
-            for student in sorted(
-                students,
-                key=lambda x: x["percentage"]
-            )[:30]:
-
-                teacher_summary_lines.append(
-                    f"  - {student['student_name']} "
-                    f"({student['roll_number']}): "
-                    f"{student['present_classes']}/"
-                    f"{student['total_classes']} present "
-                    f"({student['percentage']}%)."
+                average = round(
+                    sum(
+                        student["percentage"]
+                        for student in students
+                    ) / len(students),
+                    1
                 )
 
-        teacher_summary = "\n".join(teacher_summary_lines)
+                low_students = [
+                    student
+                    for student in students
+                    if student["percentage"] < 75
+                ]
+
+                teacher_summary_lines.append(
+                    f"{subject}: "
+                    f"{len(students)} students, "
+                    f"class average {average}%, "
+                    f"{len(low_students)} below 75%."
+                )
+
+                # Give Gemini useful student-level data,
+                # but don't dump unlimited records.
+                for student in sorted(
+                    low_students,
+                    key=lambda x: x["percentage"]
+                )[:15]:
+
+                    teacher_summary_lines.append(
+                        f"  - "
+                        f"{student['student_name']} "
+                        f"({student['roll_number']}): "
+                        f"{student['percentage']}%"
+                    )
+
+        teacher_summary = "\n".join(
+            teacher_summary_lines
+        )
 
         if not teacher_summary:
 
@@ -2009,10 +1886,7 @@ You are the AI Assistant of an AI Smart Attendance Management System.
 
 The logged-in user is a TEACHER.
 
-Answer the teacher's attendance-management question using ONLY
-the data provided below. The question may be phrased in any
-natural way; understand its intent from the question and use
-the relevant course, student, attendance, or date data.
+Answer the teacher's question using ONLY the data provided below.
 
 Teacher Data:
 {teacher_data}
@@ -2024,8 +1898,7 @@ Rules:
 1. Give a short, simple and clear answer.
 2. Do not make up student, course or attendance information.
 3. Use only the provided data.
-4. You may calculate simple values, percentages, comparisons,
-   or attendance requirements using the provided data.
+4. You may calculate simple values using the provided data.
 5. If the teacher asks about student performance,
    use the attendance summary.
 6. If the teacher asks about improving attendance,
