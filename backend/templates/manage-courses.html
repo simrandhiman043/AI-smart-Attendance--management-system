@@ -20,6 +20,7 @@
 
 </head>
 
+
 <body>
 
 
@@ -54,6 +55,7 @@
     </header>
 
 
+
     <!-- Main Content -->
 
     <main class="teacher-container">
@@ -76,6 +78,7 @@
             </p>
 
         </section>
+
 
 
         <!-- Add Course -->
@@ -103,11 +106,15 @@
             </div>
 
 
+
             <form
                 method="POST"
                 action="{{ url_for('course_management.teacher_course') }}"
                 class="course-form"
             >
+
+
+                <!-- Course Name -->
 
                 <div class="form-group">
 
@@ -126,6 +133,9 @@
                 </div>
 
 
+
+                <!-- Course Code -->
+
                 <div class="form-group">
 
                     <label for="course_code">
@@ -143,6 +153,41 @@
                 </div>
 
 
+
+                <!-- Stream -->
+
+                <div class="form-group">
+
+                    <label for="stream_id">
+                        Stream
+                    </label>
+
+                    <select
+                        id="stream_id"
+                        name="stream_id"
+                        required
+                    >
+
+                        <option value="">
+                            Select stream
+                        </option>
+
+                        {% for stream in streams %}
+
+                            <option value="{{ stream.stream_id }}">
+                                {{ stream.stream_name }}
+                            </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+
+
+                <!-- Add Button -->
+
                 <button
                     type="submit"
                     class="teacher-primary-btn"
@@ -150,9 +195,11 @@
                     Add Course
                 </button>
 
+
             </form>
 
         </section>
+
 
 
         <!-- Existing Courses -->
@@ -180,11 +227,14 @@
             </div>
 
 
+
             {% if courses %}
 
                 <div class="manage-course-list">
 
+
                     {% for course in courses %}
+
 
                     <div class="manage-course-card">
 
@@ -204,15 +254,19 @@
                                 </h3>
 
                                 <p>
+
                                     Course Code:
+
                                     <strong>
                                         {{ course.course_code }}
                                     </strong>
+
                                 </p>
 
                             </div>
 
                         </div>
+
 
 
                         <!-- Edit Course -->
@@ -223,6 +277,7 @@
                                 Edit Course
                             </h4>
 
+
                             <form
                                 method="POST"
                                 action="{{ url_for(
@@ -232,12 +287,14 @@
                                 class="course-edit-form"
                             >
 
+
                                 <input
                                     type="text"
                                     name="course_name"
                                     value="{{ course.course_name }}"
                                     required
                                 >
+
 
                                 <input
                                     type="text"
@@ -246,6 +303,43 @@
                                     required
                                 >
 
+
+                                <!-- Edit Stream -->
+
+                                <select
+                                    name="stream_id"
+                                    required
+                                    {% if course.students %}
+                                        disabled
+                                    {% endif %}
+                                >
+
+                                    {% for stream in streams %}
+
+                                        <option
+                                            value="{{ stream.stream_id }}"
+                                            {% if course.stream_id == stream.stream_id %}
+                                                selected
+                                            {% endif %}
+                                        >
+                                            {{ stream.stream_name }}
+                                        </option>
+
+                                    {% endfor %}
+
+                                </select>
+
+
+                                {% if course.students %}
+
+                                    <small>
+                                        Stream cannot be changed because
+                                        students are already enrolled.
+                                    </small>
+
+                                {% endif %}
+
+
                                 <button
                                     type="submit"
                                     class="teacher-secondary-btn"
@@ -253,9 +347,11 @@
                                     Edit / Update
                                 </button>
 
+
                             </form>
 
                         </div>
+
 
 
                         <!-- Delete Course -->
@@ -282,6 +378,7 @@
                         </div>
 
 
+
                         <!-- Enrolled Students -->
 
                         <div class="enrolled-section">
@@ -292,26 +389,34 @@
                                     Enrolled Students
                                 </h4>
 
+
                                 {% if course.students %}
+
                                     <span>
-                                        {{ course.students|length }} Students
+                                        {{ course.students|length }}
+                                        Students
                                     </span>
+
                                 {% endif %}
 
                             </div>
+
 
 
                             {% if course.students %}
 
                                 <div class="enrolled-student-list">
 
+
                                     {% for student in course.students %}
+
 
                                     <div class="enrolled-student">
 
                                         <div class="student-icon">
                                             👤
                                         </div>
+
 
                                         <div class="student-info">
 
@@ -320,15 +425,20 @@
                                             </strong>
 
                                             <small>
+
                                                 Roll Number:
+
                                                 {{ student.roll_number }}
+
                                             </small>
 
                                         </div>
 
                                     </div>
 
+
                                     {% endfor %}
+
 
                                 </div>
 
@@ -348,16 +458,21 @@
 
                             {% endif %}
 
+
                         </div>
 
 
                     </div>
 
+
                     {% endfor %}
+
 
                 </div>
 
+
             {% else %}
+
 
                 <div class="empty-state">
 
@@ -371,12 +486,15 @@
 
                 </div>
 
+
             {% endif %}
+
 
         </section>
 
 
     </main>
+
 
 
     <!-- Footer -->

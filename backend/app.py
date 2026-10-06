@@ -52,6 +52,22 @@ db = mysql.connector.connect(
     use_pure=True,
     autocommit=True
 )
+
+def get_teacher_stream_ids(teacher_id):
+    cursor = db.cursor()
+
+    cursor.execute("""
+        SELECT stream_id
+        FROM teacher_streams
+        WHERE teacher_id = %s
+    """, (teacher_id,))
+
+    stream_ids = [row[0] for row in cursor.fetchall()]
+
+    cursor.close()
+
+    return stream_ids
+
 # Gemini AI client
 # 10 seconds is the minimum deadline accepted by the Gemini API.
 client = genai.Client(
@@ -696,9 +712,17 @@ def manage_courses():
 
     cursor = db.cursor(dictionary=True)
 
+    # -------------------------------------------------
+    # Get courses created by this teacher
+    # -------------------------------------------------
+
     cursor.execute(
         """
-        SELECT course_id, course_name, course_code
+        SELECT
+            course_id,
+            course_name,
+            course_code,
+            stream_id
         FROM courses
         WHERE teacher_id = %s
         """,
@@ -707,7 +731,32 @@ def manage_courses():
 
     courses = cursor.fetchall()
 
+
+    # -------------------------------------------------
+    # Get streams assigned to this teacher
+    # -------------------------------------------------
+
+    cursor.execute(
+        """
+        SELECT
+            s.stream_id,
+            s.stream_name
+        FROM streams s
+        INNER JOIN teacher_streams ts
+            ON s.stream_id = ts.stream_id
+        WHERE ts.teacher_id = %s
+        ORDER BY s.stream_name
+        """,
+        (teacher_id,)
+    )
+
+    streams = cursor.fetchall()
+
+
+    # -------------------------------------------------
     # Get enrolled students for each course
+    # -------------------------------------------------
+
     for course in courses:
 
         cursor.execute(
@@ -727,13 +776,16 @@ def manage_courses():
 
         course["students"] = cursor.fetchall()
 
+
     cursor.close()
+
 
     return render_template(
         "manage-courses.html",
-        courses=courses
+        courses=courses,
+        streams=streams
     )
-
+    
 @app.route("/mark-attendance", methods=["GET", "POST"])
 def mark_attendance():
 

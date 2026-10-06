@@ -28,11 +28,31 @@ def register_teacher():
     stream_ids = request.form.getlist('stream_ids')
 
     if not all([name, email, password]) or not stream_ids:
-         return jsonify({"error": "All fields are required."}), 400
+        return jsonify({"error": "All fields are required."}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # Validate selected streams
+    placeholders = ','.join(['%s'] * len(stream_ids))
+
+    cursor.execute(
+        f"""
+        SELECT stream_id
+        FROM streams
+        WHERE stream_id IN ({placeholders})
+        """,
+        tuple(stream_ids)
+    )
+
+    valid_stream_ids = {str(row[0]) for row in cursor.fetchall()}
+
+    if len(valid_stream_ids) != len(set(stream_ids)):
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Invalid stream selected."}), 400
+
+    # Check duplicate email
     cursor.execute(
         "SELECT teacher_id FROM teachers WHERE email = %s",
         (email,)
@@ -45,14 +65,19 @@ def register_teacher():
 
     hashed_password = generate_password_hash(password)
 
+    # Create teacher
     cursor.execute(
-        "INSERT INTO teachers (name, email, password) VALUES (%s, %s, %s)",
+        """
+        INSERT INTO teachers (name, email, password)
+        VALUES (%s, %s, %s)
+        """,
         (name, email, hashed_password)
     )
 
     teacher_id = cursor.lastrowid
 
-    for stream_id in stream_ids:
+    # Assign selected streams
+    for stream_id in set(stream_ids):
         cursor.execute(
             """
             INSERT INTO teacher_streams (teacher_id, stream_id)
@@ -60,6 +85,7 @@ def register_teacher():
             """,
             (teacher_id, stream_id)
         )
+
     conn.commit()
 
     cursor.close()

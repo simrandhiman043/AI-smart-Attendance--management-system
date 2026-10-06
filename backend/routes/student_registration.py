@@ -35,6 +35,18 @@ def register_student():
     conn = get_db_connection()
     cursor = conn.cursor()
 
+    # Validate selected stream
+    cursor.execute(
+        "SELECT stream_id FROM streams WHERE stream_id = %s",
+        (stream_id,)
+    )
+
+    if not cursor.fetchone():
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Invalid stream selected."}), 400
+
+    # Check duplicate email
     cursor.execute(
         "SELECT student_id FROM students WHERE email = %s",
         (email,)
@@ -45,6 +57,7 @@ def register_student():
         conn.close()
         return jsonify({"error": "This email is already registered."}), 409
 
+    # Check duplicate roll number
     cursor.execute(
         "SELECT student_id FROM students WHERE roll_number = %s",
         (roll_number,)
@@ -58,9 +71,19 @@ def register_student():
     hashed_password = generate_password_hash(password)
 
     cursor.execute(
-        "INSERT INTO students (name, email, password, roll_number, semester, stream_id) "
-        "VALUES (%s, %s, %s, %s, %s, %s)",
-        (name, email, hashed_password, roll_number, semester, stream_id)
+        """
+        INSERT INTO students
+        (name, email, password, roll_number, semester, stream_id)
+        VALUES (%s, %s, %s, %s, %s, %s)
+        """,
+        (
+            name,
+            email,
+            hashed_password,
+            roll_number,
+            semester,
+            stream_id
+        )
     )
 
     conn.commit()
