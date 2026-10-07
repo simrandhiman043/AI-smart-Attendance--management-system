@@ -28,8 +28,17 @@ def register_student():
     roll_number = request.form.get('roll_number')
     semester = request.form.get('semester')
     stream_id = request.form.get('stream_id')
+    section = request.form.get('section')
 
-    if not all([name, email, password, roll_number, semester, stream_id]):
+    if not all([
+        name,
+        email,
+        password,
+        roll_number,
+        semester,
+        stream_id,
+        section
+    ]):
         return jsonify({"error": "All fields are required."}), 400
 
     conn = get_db_connection()
@@ -45,6 +54,14 @@ def register_student():
         cursor.close()
         conn.close()
         return jsonify({"error": "Invalid stream selected."}), 400
+
+    # Validate selected section
+    allowed_sections = {'A', 'B', 'C', 'D'}
+
+    if section not in allowed_sections:
+        cursor.close()
+        conn.close()
+        return jsonify({"error": "Invalid section selected."}), 400
 
     # Check duplicate email
     cursor.execute(
@@ -73,8 +90,16 @@ def register_student():
     cursor.execute(
         """
         INSERT INTO students
-        (name, email, password, roll_number, semester, stream_id)
-        VALUES (%s, %s, %s, %s, %s, %s)
+        (
+            name,
+            email,
+            password,
+            roll_number,
+            semester,
+            stream_id,
+            section
+        )
+        VALUES (%s, %s, %s, %s, %s, %s, %s)
         """,
         (
             name,
@@ -82,7 +107,8 @@ def register_student():
             hashed_password,
             roll_number,
             semester,
-            stream_id
+            stream_id,
+            section
         )
     )
 

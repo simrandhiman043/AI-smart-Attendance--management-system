@@ -70,14 +70,35 @@ def teacher_course():
     course_name = request.form.get("course_name")
     course_code = request.form.get("course_code")
     stream_id = request.form.get("stream_id")
+    semester = request.form.get("semester")
+    section = request.form.get("section")
 
     teacher_id = session.get("teacher_id")
 
     if not teacher_id:
         return redirect(url_for("teacher_login"))
 
-    if not all([course_name, course_code, stream_id]):
+    if not all([
+        course_name,
+        course_code,
+        stream_id,
+        semester,
+        section
+    ]):
         return "All fields are required.", 400
+
+    # Validate semester
+    try:
+        semester = int(semester)
+    except ValueError:
+        return "Invalid semester selected.", 400
+
+    if semester < 1 or semester > 8:
+        return "Invalid semester selected.", 400
+
+    # Validate section
+    if section not in {"A", "B", "C", "D"}:
+        return "Invalid section selected.", 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -107,13 +128,19 @@ def teacher_course():
             WHERE teacher_id = %s
             AND stream_id = %s
             """,
-            (teacher_id, stream_id)
+            (
+                teacher_id,
+                stream_id
+            )
         )
 
         allowed_stream = cursor.fetchone()
 
         if not allowed_stream:
-            return "You are not allowed to create a course for this stream.", 403
+            return (
+                "You are not allowed to create a course "
+                "for this stream."
+            ), 403
 
         # Insert course
         cursor.execute(
@@ -123,15 +150,19 @@ def teacher_course():
                 course_name,
                 course_code,
                 teacher_id,
-                stream_id
+                stream_id,
+                semester,
+                section
             )
-            VALUES (%s, %s, %s, %s)
+            VALUES (%s, %s, %s, %s, %s, %s)
             """,
             (
                 course_name,
                 course_code,
                 teacher_id,
-                stream_id
+                stream_id,
+                semester,
+                section
             )
         )
 
@@ -215,9 +246,30 @@ def edit_course(course_id):
     course_name = request.form.get("course_name")
     course_code = request.form.get("course_code")
     stream_id = request.form.get("stream_id")
+    semester = request.form.get("semester")
+    section = request.form.get("section")
 
-    if not all([course_name, course_code, stream_id]):
+    if not all([
+        course_name,
+        course_code,
+        stream_id,
+        semester,
+        section
+    ]):
         return "All fields are required.", 400
+
+    # Validate semester
+    try:
+        semester = int(semester)
+    except ValueError:
+        return "Invalid semester selected.", 400
+
+    if semester < 1 or semester > 8:
+        return "Invalid semester selected.", 400
+
+    # Validate section
+    if section not in {"A", "B", "C", "D"}:
+        return "Invalid section selected.", 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -227,7 +279,10 @@ def edit_course(course_id):
         # Check course belongs to logged-in teacher
         cursor.execute(
             """
-            SELECT stream_id
+            SELECT
+                stream_id,
+                semester,
+                section
             FROM courses
             WHERE course_id = %s
             AND teacher_id = %s
@@ -244,6 +299,8 @@ def edit_course(course_id):
             return "Course not found or access denied.", 404
 
         old_stream_id = course[0]
+        old_semester = course[1]
+        old_section = course[2]
 
         # Check selected stream is taught by this teacher
         cursor.execute(
@@ -264,8 +321,16 @@ def edit_course(course_id):
         if not allowed_stream:
             return "You are not allowed to use this stream.", 403
 
-        # If stream is being changed, check whether students are enrolled
-        if int(old_stream_id) != int(stream_id):
+        # Check whether stream, semester or section is changing
+        details_changed = (
+            int(old_stream_id) != int(stream_id)
+            or old_semester != semester
+            or old_section != section
+        )
+
+        # If course already has enrolled students,
+        # these matching fields cannot be changed
+        if details_changed:
 
             cursor.execute(
                 """
@@ -281,7 +346,7 @@ def edit_course(course_id):
             if enrolled_count > 0:
                 return (
                     "This course already has enrolled students. "
-                    "Its stream cannot be changed."
+                    "Its stream, semester or section cannot be changed."
                 ), 400
 
         # Update course
@@ -291,7 +356,9 @@ def edit_course(course_id):
             SET
                 course_name = %s,
                 course_code = %s,
-                stream_id = %s
+                stream_id = %s,
+                semester = %s,
+                section = %s
             WHERE course_id = %s
             AND teacher_id = %s
             """,
@@ -299,6 +366,8 @@ def edit_course(course_id):
                 course_name,
                 course_code,
                 stream_id,
+                semester,
+                section,
                 course_id,
                 teacher_id
             )
@@ -318,3 +387,4 @@ def edit_course(course_id):
         conn.close()
 
     return redirect(url_for("manage_courses"))
+

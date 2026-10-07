@@ -7,11 +7,9 @@
 
     <title>Teacher Dashboard | AI Smart Attendance Management System</title>
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 
-    <link rel="stylesheet"
-          href="{{ url_for('static', filename='css/teacher.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/teacher.css') }}">
 </head>
 
 <body>
@@ -182,8 +180,7 @@
                     </p>
                 </div>
 
-                <a href="{{ url_for('mark_attendance') }}"
-                   class="teacher-primary-btn">
+                <a href="{{ url_for('mark_attendance') }}" class="teacher-primary-btn">
                     Mark Attendance
                 </a>
 
@@ -208,9 +205,7 @@
             </div>
 
 
-            <form method="POST"
-                  action="{{ url_for('manage_enrollments') }}"
-                  class="enrollment-form">
+            <form method="POST" action="{{ url_for('manage_enrollments') }}" class="enrollment-form">
 
 
                 <!-- Course -->
@@ -221,9 +216,7 @@
                         Select Course
                     </label>
 
-                    <select name="course_id"
-                            id="course_id"
-                            required>
+                    <select name="course_id" id="course_id" required>
 
                         <option value="">
                             -- Select Course --
@@ -234,6 +227,8 @@
                         <option value="{{ course.course_id }}">
                             {{ course.course_name }}
                             ({{ course.course_code }})
+                            - Sem {{ course.semester }}
+                            - Section {{ course.section }}
                         </option>
 
                         {% endfor %}
@@ -252,45 +247,63 @@
                     </label>
 
 
-                    {% if students %}
+                    {% if courses %}
 
-                    <div class="student-list">
+                    {% for course in courses %}
 
-                        {% for student in students %}
+                    <div class="course-student-list" data-course-id="{{ course.course_id }}" style="display: none;">
 
-                        <label class="student-option">
+                        {% if course.students %}
 
-                            <input
-                                type="checkbox"
-                                name="student_ids"
-                                value="{{ student.student_id }}"
-                            >
+                        <div class="student-list">
 
-                            <span class="student-check"></span>
+                            {% for student in course.students %}
 
-                            <span class="student-info">
+                            <label class="student-option">
 
-                                <strong>
-                                    {{ student.name }}
-                                </strong>
+                                <input type="checkbox" name="student_ids" value="{{ student.student_id }}">
 
-                                <small>
-                                    Roll No: {{ student.roll_number }}
-                                </small>
+                                <span class="student-check"></span>
 
-                            </span>
+                                <span class="student-info">
 
-                        </label>
+                                    <strong>
+                                        {{ student.name }}
+                                    </strong>
 
-                        {% endfor %}
+                                    <small>
+                                        Roll No: {{ student.roll_number }}
+                                    </small>
+
+                                </span>
+
+                            </label>
+
+                            {% endfor %}
+
+                        </div>
+
+                        {% else %}
+
+                        <div class="empty-state small">
+                            <span>👥</span>
+                            <p>
+                                No students found for this course's
+                                stream, semester and section.
+                            </p>
+                        </div>
+
+                        {% endif %}
 
                     </div>
+
+                    {% endfor %}
 
                     {% else %}
 
                     <div class="empty-state small">
                         <span>👥</span>
-                        <p>No students registered yet.</p>
+                        <p>No courses available.</p>
                     </div>
 
                     {% endif %}
@@ -298,19 +311,64 @@
                 </div>
 
 
-                {% if students %}
-
-                <button type="submit"
-                        class="teacher-primary-btn enroll-btn">
+                <button type="submit" class="teacher-primary-btn enroll-btn" id="enroll-btn" style="display: none;">
                     Enroll Selected Students
                 </button>
-
-                {% endif %}
 
             </form>
 
         </section>
 
+
+        <script>
+            const courseSelect = document.getElementById("course_id");
+            const studentLists = document.querySelectorAll(".course-student-list");
+            const enrollButton = document.getElementById("enroll-btn");
+
+            courseSelect.addEventListener("change", function () {
+
+                const selectedCourseId = this.value;
+
+                studentLists.forEach(function (list) {
+
+                    list.style.display = "none";
+
+                    const checkboxes = list.querySelectorAll(
+                        'input[name="student_ids"]'
+                    );
+
+                    checkboxes.forEach(function (checkbox) {
+                        checkbox.checked = false;
+                    });
+
+                });
+
+                enrollButton.style.display = "none";
+
+                if (!selectedCourseId) {
+                    return;
+                }
+
+                const selectedList = document.querySelector(
+                    '.course-student-list[data-course-id="' +
+                    selectedCourseId +
+                    '"]'
+                );
+
+                if (selectedList) {
+
+                    selectedList.style.display = "block";
+
+                    const checkboxes = selectedList.querySelectorAll(
+                        'input[name="student_ids"]'
+                    );
+
+                    if (checkboxes.length > 0) {
+                        enrollButton.style.display = "inline-flex";
+                    }
+                }
+            });
+        </script>
 
         <!-- Quick Actions -->
 
@@ -330,18 +388,15 @@
 
             <div class="quick-actions">
 
-                <a href="{{ url_for('manage_courses') }}"
-                   class="teacher-primary-btn">
+                <a href="{{ url_for('manage_courses') }}" class="teacher-primary-btn">
                     Manage Courses
                 </a>
 
-                <a href="{{ url_for('assistant') }}"
-                   class="teacher-primary-btn">
+                <a href="{{ url_for('assistant') }}" class="teacher-primary-btn">
                     AI Assistant
                 </a>
 
-                <a href="{{ url_for('teacher_logout') }}"
-                   class="teacher-secondary-btn">
+                <a href="{{ url_for('teacher_logout') }}" class="teacher-secondary-btn">
                     Logout
                 </a>
 

@@ -438,7 +438,11 @@ def student_attendance():
 
     cursor = db.cursor(dictionary=True)
 
+    # -------------------------------------------------
     # Get student's enrolled courses
+    # Only show courses matching student's stream
+    # -------------------------------------------------
+
     cursor.execute(
         """
         SELECT
@@ -448,7 +452,10 @@ def student_attendance():
         FROM courses c
         INNER JOIN enrollments e
             ON c.course_id = e.course_id
+        INNER JOIN students s
+            ON e.student_id = s.student_id
         WHERE e.student_id = %s
+        AND c.stream_id = s.stream_id
         ORDER BY c.course_name
         """,
         (student_id,)
@@ -474,7 +481,11 @@ def student_attendance():
         selected_from_date = request.form.get("from_date") or ""
         selected_to_date = request.form.get("to_date") or ""
 
-        # Verify selected course belongs to logged-in student
+        # -------------------------------------------------
+        # Verify selected course belongs to student
+        # AND matches student's stream
+        # -------------------------------------------------
+
         cursor.execute(
             """
             SELECT
@@ -484,8 +495,11 @@ def student_attendance():
             FROM courses c
             INNER JOIN enrollments e
                 ON c.course_id = e.course_id
+            INNER JOIN students s
+                ON e.student_id = s.student_id
             WHERE c.course_id = %s
             AND e.student_id = %s
+            AND c.stream_id = s.stream_id
             """,
             (course_id, student_id)
         )
@@ -494,7 +508,10 @@ def student_attendance():
 
         if selected_course:
 
+            # -------------------------------------------------
             # Base attendance query
+            # -------------------------------------------------
+
             attendance_query = """
                 SELECT
                     attendance_date,
@@ -504,25 +521,38 @@ def student_attendance():
                 AND course_id = %s
             """
 
-            query_params = [student_id, course_id]
+            query_params = [
+                student_id,
+                course_id
+            ]
 
+            # -------------------------------------------------
             # From date filter
+            # -------------------------------------------------
+
             if selected_from_date:
 
                 attendance_query += """
                     AND attendance_date >= %s
                 """
 
-                query_params.append(selected_from_date)
+                query_params.append(
+                    selected_from_date
+                )
 
+            # -------------------------------------------------
             # To date filter
+            # -------------------------------------------------
+
             if selected_to_date:
 
                 attendance_query += """
                     AND attendance_date <= %s
                 """
 
-                query_params.append(selected_to_date)
+                query_params.append(
+                    selected_to_date
+                )
 
             attendance_query += """
                 ORDER BY attendance_date DESC
@@ -535,21 +565,31 @@ def student_attendance():
 
             attendance_records = cursor.fetchall()
 
-            # Calculate summary
-            total_classes = len(attendance_records)
+            # -------------------------------------------------
+            # Calculate attendance summary
+            # -------------------------------------------------
+
+            total_classes = len(
+                attendance_records
+            )
 
             for record in attendance_records:
 
                 if record["status"] == "Present":
+
                     present_classes += 1
 
                 elif record["status"] == "Absent":
+
                     absent_classes += 1
 
             if total_classes > 0:
 
                 attendance_percentage = round(
-                    (present_classes / total_classes) * 100,
+                    (
+                        present_classes
+                        / total_classes
+                    ) * 100,
                     2
                 )
 
@@ -609,41 +649,74 @@ def teacher_dashboard():
 
     cursor = db.cursor(dictionary=True)
 
+    # Teacher details
     cursor.execute(
-        "SELECT * FROM teachers WHERE teacher_id = %s",
+        """
+        SELECT *
+        FROM teachers
+        WHERE teacher_id = %s
+        """,
         (teacher_id,)
     )
 
     teacher = cursor.fetchone()
 
+    # Teacher's courses with stream, semester and section
     cursor.execute(
         """
-        SELECT course_id, course_name, course_code
-        FROM courses
-        WHERE teacher_id = %s
+        SELECT
+            c.course_id,
+            c.course_name,
+            c.course_code,
+            c.stream_id,
+            c.semester,
+            c.section,
+            s.stream_name
+        FROM courses c
+        LEFT JOIN streams s
+            ON c.stream_id = s.stream_id
+        WHERE c.teacher_id = %s
+        ORDER BY c.course_name
         """,
         (teacher_id,)
     )
 
     courses = cursor.fetchall()
 
-    cursor.execute(
-        """
-        SELECT student_id, name, email, roll_number, semester
-        FROM students
-        ORDER BY name
-        """
-    )
+    # Get only students matching each course
+    for course in courses:
 
-    students = cursor.fetchall()
+        cursor.execute(
+            """
+            SELECT
+                student_id,
+                name,
+                email,
+                roll_number,
+                semester,
+                stream_id,
+                section
+            FROM students
+            WHERE stream_id = %s
+            AND semester = %s
+            AND section = %s
+            ORDER BY name
+            """,
+            (
+                course["stream_id"],
+                course["semester"],
+                course["section"]
+            )
+        )
+
+        course["students"] = cursor.fetchall()
 
     cursor.close()
 
     return render_template(
         "teacher-dashboard.html",
         teacher=teacher,
-        courses=courses,
-        students=students
+        courses=courses
     )
 
 @app.route("/manage-enrollments", methods=["POST"])
@@ -722,7 +795,9 @@ def manage_courses():
             course_id,
             course_name,
             course_code,
-            stream_id
+            stream_id,
+            semester,
+            section
         FROM courses
         WHERE teacher_id = %s
         """,

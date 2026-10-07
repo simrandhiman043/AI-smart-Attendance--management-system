@@ -24,13 +24,14 @@
 <body>
 
 
-    <!-- Navbar -->
+    <!-- ===== Navbar ===== -->
 
     <header class="navbar">
 
         <div class="logo">
             AI Attendance System
         </div>
+
 
         <nav>
 
@@ -56,12 +57,12 @@
 
 
 
-    <!-- Main Content -->
+    <!-- ===== Main Content ===== -->
 
     <main class="teacher-container">
 
 
-        <!-- Page Header -->
+        <!-- ===== Page Header ===== -->
 
         <section class="teacher-header">
 
@@ -81,7 +82,7 @@
 
 
 
-        <!-- Add Course -->
+        <!-- ===== Add Course ===== -->
 
         <section class="teacher-card">
 
@@ -186,6 +187,102 @@
 
 
 
+                <!-- Semester -->
+
+                <div class="form-group">
+
+                    <label for="semester">
+                        Semester
+                    </label>
+
+                    <select
+                        id="semester"
+                        name="semester"
+                        required
+                    >
+
+                        <option value="">
+                            Select semester
+                        </option>
+
+                        <option value="1">
+                            Semester 1
+                        </option>
+
+                        <option value="2">
+                            Semester 2
+                        </option>
+
+                        <option value="3">
+                            Semester 3
+                        </option>
+
+                        <option value="4">
+                            Semester 4
+                        </option>
+
+                        <option value="5">
+                            Semester 5
+                        </option>
+
+                        <option value="6">
+                            Semester 6
+                        </option>
+
+                        <option value="7">
+                            Semester 7
+                        </option>
+
+                        <option value="8">
+                            Semester 8
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+
+                <!-- Section -->
+
+                <div class="form-group">
+
+                    <label for="section">
+                        Section
+                    </label>
+
+                    <select
+                        id="section"
+                        name="section"
+                        required
+                    >
+
+                        <option value="">
+                            Select section
+                        </option>
+
+                        <option value="A">
+                            Section A
+                        </option>
+
+                        <option value="B">
+                            Section B
+                        </option>
+
+                        <option value="C">
+                            Section C
+                        </option>
+
+                        <option value="D">
+                            Section D
+                        </option>
+
+                    </select>
+
+                </div>
+
+
+
                 <!-- Add Button -->
 
                 <button
@@ -202,9 +299,10 @@
 
 
 
-        <!-- Existing Courses -->
+        <!-- ===== Existing Courses ===== -->
 
         <section class="teacher-card">
+
 
             <div class="card-heading">
 
@@ -236,233 +334,348 @@
                     {% for course in courses %}
 
 
-                    <div class="manage-course-card">
+                        <div class="manage-course-card">
 
 
-                        <!-- Course Information -->
+                            <!-- ===== Course Information ===== -->
 
-                        <div class="manage-course-header">
+                            <div class="manage-course-header">
 
-                            <div class="course-icon">
-                                📖
-                            </div>
-
-                            <div>
-
-                                <h3>
-                                    {{ course.course_name }}
-                                </h3>
-
-                                <p>
-
-                                    Course Code:
-
-                                    <strong>
-                                        {{ course.course_code }}
-                                    </strong>
-
-                                </p>
-
-                            </div>
-
-                        </div>
-
-
-
-                        <!-- Edit Course -->
-
-                        <div class="course-edit-section">
-
-                            <h4>
-                                Edit Course
-                            </h4>
-
-
-                            <form
-                                method="POST"
-                                action="{{ url_for(
-                                    'course_management.edit_course',
-                                    course_id=course.course_id
-                                ) }}"
-                                class="course-edit-form"
-                            >
-
-
-                                <input
-                                    type="text"
-                                    name="course_name"
-                                    value="{{ course.course_name }}"
-                                    required
-                                >
-
-
-                                <input
-                                    type="text"
-                                    name="course_code"
-                                    value="{{ course.course_code }}"
-                                    required
-                                >
-
-
-                                <!-- Edit Stream -->
-
-                                <select
-                                    name="stream_id"
-                                    required
-                                    {% if course.students %}
-                                        disabled
-                                    {% endif %}
-                                >
-
-                                    {% for stream in streams %}
-
-                                        <option
-                                            value="{{ stream.stream_id }}"
-                                            {% if course.stream_id == stream.stream_id %}
-                                                selected
-                                            {% endif %}
-                                        >
-                                            {{ stream.stream_name }}
-                                        </option>
-
-                                    {% endfor %}
-
-                                </select>
-
-
-                                {% if course.students %}
-
-                                    <small>
-                                        Stream cannot be changed because
-                                        students are already enrolled.
-                                    </small>
-
-                                {% endif %}
-
-
-                                <button
-                                    type="submit"
-                                    class="teacher-secondary-btn"
-                                >
-                                    Edit / Update
-                                </button>
-
-
-                            </form>
-
-                        </div>
-
-
-
-                        <!-- Delete Course -->
-
-                        <div class="course-delete-section">
-
-                            <form
-                                method="POST"
-                                action="{{ url_for(
-                                    'course_management.delete_course',
-                                    course_id=course.course_id
-                                ) }}"
-                            >
-
-                                <button
-                                    type="submit"
-                                    class="teacher-danger-btn"
-                                >
-                                    Delete Course
-                                </button>
-
-                            </form>
-
-                        </div>
-
-
-
-                        <!-- Enrolled Students -->
-
-                        <div class="enrolled-section">
-
-                            <div class="enrolled-heading">
-
-                                <h4>
-                                    Enrolled Students
-                                </h4>
-
-
-                                {% if course.students %}
-
-                                    <span>
-                                        {{ course.students|length }}
-                                        Students
-                                    </span>
-
-                                {% endif %}
-
-                            </div>
-
-
-
-                            {% if course.students %}
-
-                                <div class="enrolled-student-list">
-
-
-                                    {% for student in course.students %}
-
-
-                                    <div class="enrolled-student">
-
-                                        <div class="student-icon">
-                                            👤
-                                        </div>
-
-
-                                        <div class="student-info">
-
-                                            <strong>
-                                                {{ student.name }}
-                                            </strong>
-
-                                            <small>
-
-                                                Roll Number:
-
-                                                {{ student.roll_number }}
-
-                                            </small>
-
-                                        </div>
-
-                                    </div>
-
-
-                                    {% endfor %}
-
-
+                                <div class="course-icon">
+                                    📖
                                 </div>
 
-                            {% else %}
+                                <div>
 
-                                <div class="empty-state small">
-
-                                    <span>
-                                        👥
-                                    </span>
+                                    <h3>
+                                        {{ course.course_name }}
+                                    </h3>
 
                                     <p>
-                                        No students enrolled in this course.
+
+                                        Course Code:
+
+                                        <strong>
+                                            {{ course.course_code }}
+                                        </strong>
+
+                                    </p>
+
+                                    <p>
+
+                                        Stream:
+
+                                        <strong>
+                                            {% for stream in streams %}
+                                                {% if course.stream_id == stream.stream_id %}
+                                                    {{ stream.stream_name }}
+                                                {% endif %}
+                                            {% endfor %}
+                                        </strong>
+
+                                    </p>
+
+                                    <p>
+
+                                        Semester:
+
+                                        <strong>
+                                            {{ course.semester }}
+                                        </strong>
+
+                                    </p>
+
+                                    <p>
+
+                                        Section:
+
+                                        <strong>
+                                            {{ course.section }}
+                                        </strong>
+
                                     </p>
 
                                 </div>
 
-                            {% endif %}
+                            </div>
+
+
+
+                            <!-- ===== Edit Course ===== -->
+
+                            <div class="course-edit-section">
+
+                                <h4>
+                                    Edit Course
+                                </h4>
+
+
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'course_management.edit_course',
+                                        course_id=course.course_id
+                                    ) }}"
+                                    class="course-edit-form"
+                                >
+
+
+                                    <!-- Edit Course Name -->
+
+                                    <input
+                                        type="text"
+                                        name="course_name"
+                                        value="{{ course.course_name }}"
+                                        required
+                                    >
+
+
+                                    <!-- Edit Course Code -->
+
+                                    <input
+                                        type="text"
+                                        name="course_code"
+                                        value="{{ course.course_code }}"
+                                        required
+                                    >
+
+
+                                    <!-- Edit Stream -->
+
+                                    <select
+                                        name="stream_id"
+                                        required
+                                        {% if course.students %}
+                                            disabled
+                                        {% endif %}
+                                    >
+
+                                        {% for stream in streams %}
+
+                                            <option
+                                                value="{{ stream.stream_id }}"
+                                                {% if course.stream_id == stream.stream_id %}
+                                                    selected
+                                                {% endif %}
+                                            >
+
+                                                {{ stream.stream_name }}
+
+                                            </option>
+
+                                        {% endfor %}
+
+                                    </select>
+
+
+
+                                    <!-- Edit Semester -->
+
+                                    <select
+                                        name="semester"
+                                        required
+                                        {% if course.students %}
+                                            disabled
+                                        {% endif %}
+                                    >
+
+                                        <option value="">
+                                            Select semester
+                                        </option>
+
+                                        {% for sem in range(1, 9) %}
+
+                                            <option
+                                                value="{{ sem }}"
+                                                {% if course.semester == sem %}
+                                                    selected
+                                                {% endif %}
+                                            >
+
+                                                Semester {{ sem }}
+
+                                            </option>
+
+                                        {% endfor %}
+
+                                    </select>
+
+
+
+                                    <!-- Edit Section -->
+
+                                    <select
+                                        name="section"
+                                        required
+                                        {% if course.students %}
+                                            disabled
+                                        {% endif %}
+                                    >
+
+                                        <option value="">
+                                            Select section
+                                        </option>
+
+                                        {% for sec in ['A', 'B', 'C', 'D'] %}
+
+                                            <option
+                                                value="{{ sec }}"
+                                                {% if course.section == sec %}
+                                                    selected
+                                                {% endif %}
+                                            >
+
+                                                Section {{ sec }}
+
+                                            </option>
+
+                                        {% endfor %}
+
+                                    </select>
+
+
+
+                                    {% if course.students %}
+
+                                        <small>
+                                            Stream, semester and section
+                                            cannot be changed because
+                                            students are already enrolled.
+                                        </small>
+
+                                    {% endif %}
+
+
+
+                                    <!-- Update Button -->
+
+                                    <button
+                                        type="submit"
+                                        class="teacher-secondary-btn"
+                                    >
+                                        Edit / Update
+                                    </button>
+
+
+                                </form>
+
+                            </div>
+
+
+
+                            <!-- ===== Delete Course ===== -->
+
+                            <div class="course-delete-section">
+
+                                <form
+                                    method="POST"
+                                    action="{{ url_for(
+                                        'course_management.delete_course',
+                                        course_id=course.course_id
+                                    ) }}"
+                                >
+
+                                    <button
+                                        type="submit"
+                                        class="teacher-danger-btn"
+                                    >
+                                        Delete Course
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+
+
+                            <!-- ===== Enrolled Students ===== -->
+
+                            <div class="enrolled-section">
+
+
+                                <div class="enrolled-heading">
+
+                                    <h4>
+                                        Enrolled Students
+                                    </h4>
+
+
+                                    {% if course.students %}
+
+                                        <span>
+                                            {{ course.students|length }}
+                                            Students
+                                        </span>
+
+                                    {% endif %}
+
+                                </div>
+
+
+
+                                {% if course.students %}
+
+                                    <div class="enrolled-student-list">
+
+
+                                        {% for student in course.students %}
+
+
+                                            <div class="enrolled-student">
+
+
+                                                <div class="student-icon">
+                                                    👤
+                                                </div>
+
+
+                                                <div class="student-info">
+
+                                                    <strong>
+                                                        {{ student.name }}
+                                                    </strong>
+
+                                                    <small>
+
+                                                        Roll Number:
+
+                                                        {{ student.roll_number }}
+
+                                                    </small>
+
+                                                </div>
+
+
+                                            </div>
+
+
+                                        {% endfor %}
+
+
+                                    </div>
+
+
+                                {% else %}
+
+                                    <div class="empty-state small">
+
+                                        <span>
+                                            👥
+                                        </span>
+
+                                        <p>
+                                            No students enrolled in this course.
+                                        </p>
+
+                                    </div>
+
+                                {% endif %}
+
+
+                            </div>
 
 
                         </div>
-
-
-                    </div>
 
 
                     {% endfor %}
@@ -497,7 +710,7 @@
 
 
 
-    <!-- Footer -->
+    <!-- ===== Footer ===== -->
 
     <footer class="footer">
 
@@ -512,3 +725,4 @@
 </body>
 
 </html>
+
