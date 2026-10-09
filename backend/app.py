@@ -438,11 +438,8 @@ def student_attendance():
 
     cursor = db.cursor(dictionary=True)
 
-    # -------------------------------------------------
-    # Get student's enrolled courses
-    # Only show courses matching student's stream
-    # -------------------------------------------------
-
+    # Get the student's enrolled courses matching
+    # stream, semester and section
     cursor.execute(
         """
         SELECT
@@ -456,6 +453,8 @@ def student_attendance():
             ON e.student_id = s.student_id
         WHERE e.student_id = %s
         AND c.stream_id = s.stream_id
+        AND c.semester = s.semester
+        AND c.section = s.section
         ORDER BY c.course_name
         """,
         (student_id,)
@@ -481,11 +480,8 @@ def student_attendance():
         selected_from_date = request.form.get("from_date") or ""
         selected_to_date = request.form.get("to_date") or ""
 
-        # -------------------------------------------------
-        # Verify selected course belongs to student
-        # AND matches student's stream
-        # -------------------------------------------------
-
+        # Verify that the selected course is enrolled
+        # and matches all three student details
         cursor.execute(
             """
             SELECT
@@ -500,6 +496,8 @@ def student_attendance():
             WHERE c.course_id = %s
             AND e.student_id = %s
             AND c.stream_id = s.stream_id
+            AND c.semester = s.semester
+            AND c.section = s.section
             """,
             (course_id, student_id)
         )
@@ -507,10 +505,6 @@ def student_attendance():
         selected_course = cursor.fetchone()
 
         if selected_course:
-
-            # -------------------------------------------------
-            # Base attendance query
-            # -------------------------------------------------
 
             attendance_query = """
                 SELECT
@@ -526,33 +520,19 @@ def student_attendance():
                 course_id
             ]
 
-            # -------------------------------------------------
             # From date filter
-            # -------------------------------------------------
-
             if selected_from_date:
-
                 attendance_query += """
                     AND attendance_date >= %s
                 """
+                query_params.append(selected_from_date)
 
-                query_params.append(
-                    selected_from_date
-                )
-
-            # -------------------------------------------------
             # To date filter
-            # -------------------------------------------------
-
             if selected_to_date:
-
                 attendance_query += """
                     AND attendance_date <= %s
                 """
-
-                query_params.append(
-                    selected_to_date
-                )
+                query_params.append(selected_to_date)
 
             attendance_query += """
                 ORDER BY attendance_date DESC
@@ -565,31 +545,20 @@ def student_attendance():
 
             attendance_records = cursor.fetchall()
 
-            # -------------------------------------------------
             # Calculate attendance summary
-            # -------------------------------------------------
-
-            total_classes = len(
-                attendance_records
-            )
+            total_classes = len(attendance_records)
 
             for record in attendance_records:
 
                 if record["status"] == "Present":
-
                     present_classes += 1
 
                 elif record["status"] == "Absent":
-
                     absent_classes += 1
 
             if total_classes > 0:
-
                 attendance_percentage = round(
-                    (
-                        present_classes
-                        / total_classes
-                    ) * 100,
+                    (present_classes / total_classes) * 100,
                     2
                 )
 
