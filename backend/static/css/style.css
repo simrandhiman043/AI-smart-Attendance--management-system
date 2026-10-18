@@ -687,3 +687,37 @@ label[for="section"] {
     color: #374151;
 }
 
+/* Floating AI Assistant Button */
+.floating-ai-assistant {
+    position: fixed;
+    right: 24px;
+    bottom: 24px;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #2563eb, #6366f1);
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 29px;
+    text-decoration: none;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+    z-index: 9999;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.floating-ai-assistant:hover {
+    transform: translateY(-4px) scale(1.05);
+    box-shadow: 0 10px 25px rgba(37, 99, 235, 0.45);
+}
+
+@media (max-width: 480px) {
+    .floating-ai-assistant {
+        width: 54px;
+        height: 54px;
+        right: 16px;
+        bottom: 16px;
+        font-size: 26px;
+    }
+}

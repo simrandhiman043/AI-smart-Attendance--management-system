@@ -52,22 +52,6 @@ db = mysql.connector.connect(
     use_pure=True,
     autocommit=True
 )
-
-def get_teacher_stream_ids(teacher_id):
-    cursor = db.cursor()
-
-    cursor.execute("""
-        SELECT stream_id
-        FROM teacher_streams
-        WHERE teacher_id = %s
-    """, (teacher_id,))
-
-    stream_ids = [row[0] for row in cursor.fetchall()]
-
-    cursor.close()
-
-    return stream_ids
-
 # Gemini AI client
 # 10 seconds is the minimum deadline accepted by the Gemini API.
 client = genai.Client(
@@ -84,7 +68,7 @@ def ask_gemini(prompt):
             contents=prompt,
             config=types.GenerateContentConfig(
                 temperature=0.1,
-                max_output_tokens=120,
+                max_output_tokens=800,
                 thinking_config=types.ThinkingConfig(
                     thinking_level="minimal"
                 )
@@ -121,92 +105,108 @@ def local_student_answer(message_lower, overall_percentage, present_classes, tot
             )
         return "\n".join(lines)
 
-    # Advice questions: calculate from the actual attendance data.
-    advice_words = (
-        "improve", "how can", "how do", "how to",
-        "what should", "need to improve", "fix my attendance",
-        "increase my attendance", "raise my attendance",
-        "maintain good attendance", "maintain attendance",
-        "keep my attendance", "keep attendance",
-        "good attendance", "practical ways", "attendance tips",
-        "attendance advice", "ways to maintain", "ways to improve",
-        "tips to maintain", "tips for attendance",
-        "stay above 75", "stay above 75%"
-    )
+    # Leave / absence questions: calculate directly from actual attendance data.
+    # This is intent-based, so natural variations such as “how many classes can I miss”
+    # or “can I take a few days off?” are handled without hardcoding exact questions.
+    leave_intent = bool(re.search(
+        r"\b(miss|skip|leave|absent|absence|off|holiday|break|chutti|vacation)\b",
+        message_lower
+    )) and bool(re.search(
+        r"\b(class|classes|lecture|lectures|day|days|week|attendance|attend)\b",
+        message_lower
+    ))
 
-    # Treat broad attendance-maintenance/improvement wording as one intent.
-    # This is intentionally intent-based, not a list of exact questions.
-    general_advice_intent = bool(
-        re.search(
-            r"\\b(attendance|attend)\\b.*\\b("
-            r"improv|maintain|keep|increase|raise|better|"
-            r"tips?|advice|ways|strateg|regular|"
-            r"avoid|stay|good|semester"
-            r")\\b",
-            message_lower
-        )
-        or
-        re.search(
-            r"\\b("
-            r"improv|maintain|keep|increase|raise|better|"
-            r"tips?|advice|ways|strateg|regular|avoid|stay"
-            r")\\b.*\\b(attendance|attend)\\b",
-            message_lower
-        )
-    )
-
-    if any(word in message_lower for word in advice_words) or general_advice_intent:
+    if leave_intent:
         mentioned = [
             subject for subject in subject_attendance
             if str(subject["subject"]).lower() in message_lower
         ]
 
-        if mentioned:
-            target = min(mentioned, key=lambda x: float(x["attendance_percentage"] or 0))
-            total = int(target["total_classes"] or 0)
-            present = int(target["present_classes"] or 0)
-            pct = float(target["attendance_percentage"] or 0)
+        # If the user asks what happens after missing a specific number of classes,
+        # project the resulting attendance instead of sending the question to Gemini.
+        number_match = re.search(
+            r"\b(?:miss|skip|absent|missed|skip)\s+(?:my\s+)?(?:next\s+)?(\d+)\s*(?:class|classes|lecture|lectures)?\b",
+            message_lower
+        )
+        if not number_match:
+            number_match = re.search(
+                r"\b(\d+)\s*(?:class|classes|lecture|lectures)\s*(?:miss|skip|absent|leave)\b",
+                message_lower
+            )
 
-            if pct < 75:
-                needed = max(0, (3 * total) - (4 * present))
+        target = min(mentioned, key=lambda x: float(x["attendance_percentage"] or 0)) if mentioned else None
+
+        if target:
+            current_total = int(target["total_classes"] or 0)
+            current_present = int(target["present_classes"] or 0)
+            current_pct = float(target["attendance_percentage"] or 0)
+            subject_name = target["subject"]
+
+            if number_match:
+                missed = int(number_match.group(1))
+                future_total = current_total + missed
+                future_pct = (current_present / future_total * 100) if future_total else 0
                 return (
-                    f"Your {target['subject']} attendance is {pct}%. "
-                    f"You need to attend the next {needed} class(es) consecutively "
-                    f"to reach 75%. Try not to miss upcoming classes."
+                    f"Your {subject_name} attendance is currently {current_pct}%. "
+                    f"If you miss the next {missed} class(es), it would become about {future_pct:.1f}%. "
+                    + ("You would still be at or above 75%." if future_pct >= 75
+                       else "That would take you below 75%.")
                 )
 
+            if current_pct >= 75:
+                max_missed = max(0, (4 * current_present - 3 * current_total) // 3)
+                if max_missed > 0:
+                    return (
+                        f"Your {subject_name} attendance is {current_pct}%. "
+                        f"You can miss up to {max_missed} more class(es) and still stay around 75%, "
+                        "assuming you attend all other classes."
+                    )
+                return (
+                    f"Your {subject_name} attendance is {current_pct}%. "
+                    "You are right around the 75% limit, so it is safer not to miss upcoming classes."
+                )
+
+            needed = max(0, (3 * current_total) - (4 * current_present))
             return (
-                f"Your {target['subject']} attendance is {pct}%, which is above 75%. "
-                f"Keep attending regularly so it stays above the required level."
+                f"Your {subject_name} attendance is {current_pct}%, already below 75%. "
+                f"You should avoid taking leave for now and attend the next {needed} class(es) "
+                "consecutively to reach 75%."
             )
 
-        # General attendance improvement.
-        weak = [
-            subject for subject in subject_attendance
-            if float(subject["attendance_percentage"] or 0) < 75
-        ]
-
-        if weak:
-            weak.sort(key=lambda x: float(x["attendance_percentage"] or 0))
-            target = weak[0]
-            total = int(target["total_classes"] or 0)
-            present = int(target["present_classes"] or 0)
-            pct = float(target["attendance_percentage"] or 0)
-            needed = max(0, (3 * total) - (4 * present))
-
+        # Overall attendance leave calculation.
+        if number_match:
+            missed = int(number_match.group(1))
+            future_total = total_classes + missed
+            future_pct = (present_classes / future_total * 100) if future_total else 0
             return (
                 f"Your overall attendance is {overall_percentage}%. "
-                f"Your weakest subject is {target['subject']} at {pct}%. "
-                f"To improve, attend your upcoming classes regularly and avoid absences. "
-                f"For {target['subject']}, you need about {needed} consecutive present "
-                f"classes to reach 75%."
+                f"If you miss the next {missed} class(es), it would become about {future_pct:.1f}%. "
+                + ("You would still be at or above 75%." if future_pct >= 75
+                   else "That would take you below 75%.")
             )
 
+        if overall_percentage >= 75:
+            max_missed = max(0, (4 * present_classes - 3 * total_classes) // 3)
+            if max_missed > 0:
+                return (
+                    f"Your overall attendance is {overall_percentage}%. "
+                    f"You can miss up to {max_missed} more class(es) and still stay around 75%, "
+                    "assuming you attend all other classes."
+                )
+            return (
+                f"Your overall attendance is {overall_percentage}%. "
+                "You are already close to the 75% limit, so taking leave could put you below it."
+            )
+
+        needed = max(0, (3 * total_classes) - (4 * present_classes))
         return (
-            f"Your overall attendance is {overall_percentage}%, which is at or above 75%. "
-            "Keep attending classes regularly and avoid unnecessary absences."
+            f"Your overall attendance is {overall_percentage}%, which is below 75%. "
+            f"You should avoid unnecessary leave and attend the next {needed} class(es) "
+            "consecutively to reach 75%."
         )
 
+    # Open-ended advice/planning questions should fall through to Gemini.
+    # Keep only deterministic history and leave/absence calculations above.
     return None
 
 def send_low_attendance_email(student_name, student_email, course_name, percentage):
@@ -235,6 +235,87 @@ AI Smart Attendance Management System
 
     mail.send(msg)
     
+
+def local_teacher_answer(message_lower, courses, by_course):
+    """Answer common teacher attendance questions from already-fetched data."""
+
+    advice_words = (
+        "improve", "how can", "how do", "how to", "why",
+        "should", "if i", "can i", "need to", "what should"
+    )
+    is_advice = any(word in message_lower for word in advice_words)
+
+    # Identify a course only when its full name or course code is mentioned.
+    matched_course = None
+    for course in courses:
+        name = str(course.get("course_name", "")).strip().lower()
+        code = str(course.get("course_code", "")).strip().lower()
+        if (name and name in message_lower) or (code and re.search(
+            rf"(?<![a-z0-9]){re.escape(code)}(?![a-z0-9])", message_lower
+        )):
+            matched_course = course
+            break
+
+    subject_names = list(by_course.keys())
+    selected_subjects = (
+        [subject for subject in subject_names
+         if matched_course and subject.lower() == str(matched_course.get("course_name", "")).lower()]
+        if matched_course else subject_names
+    )
+
+    low_intent = any(phrase in message_lower for phrase in (
+        "low attendance", "below 75", "below 75%", "less than 75",
+        "under 75", "students below", "students with low attendance"
+    ))
+    if low_intent and not is_advice:
+        low_students = []
+        for subject in selected_subjects:
+            for student in by_course.get(subject, []):
+                if float(student.get("percentage", 0) or 0) < 75:
+                    low_students.append((subject, student))
+
+        if not low_students:
+            if matched_course:
+                return f"No students with attendance below 75% were found for {matched_course['course_name']} in the available attendance records."
+            return "No students with attendance below 75% were found in the available attendance records."
+
+        lines = [
+            f"Students with attendance below 75% in {matched_course['course_name']}:"
+            if matched_course else "Students with attendance below 75%:"
+        ]
+        for subject, student in sorted(low_students, key=lambda item: item[1]["percentage"]):
+            lines.append(
+                f"• {student['student_name']} ({student['roll_number']}) — "
+                f"{subject}: {student['percentage']}%"
+            )
+        return "\n".join(lines)
+
+    # Course-level summary questions.
+    asks_average = any(term in message_lower for term in (
+        "average attendance", "class average", "average percentage", "course average"
+    ))
+    asks_count = any(term in message_lower for term in (
+        "how many students", "number of students", "student count", "total students"
+    ))
+    if (asks_average or asks_count) and not is_advice:
+        if matched_course:
+            subjects = [matched_course.get("course_name", "")]
+        else:
+            subjects = subject_names
+        available = [(subject, by_course.get(subject, [])) for subject in subjects if by_course.get(subject)]
+        if not available:
+            return "I could not find attendance records for the requested course(s)."
+        lines = []
+        for subject, students in available:
+            average = round(sum(float(st.get("percentage", 0) or 0) for st in students) / len(students), 1)
+            if asks_average:
+                lines.append(f"{subject}: average attendance is {average}%.")
+            if asks_count:
+                lines.append(f"{subject}: {len(students)} student(s) have attendance records.")
+        return "\n".join(lines)
+
+    return None
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -438,8 +519,7 @@ def student_attendance():
 
     cursor = db.cursor(dictionary=True)
 
-    # Get the student's enrolled courses matching
-    # stream, semester and section
+    # Get student's enrolled courses
     cursor.execute(
         """
         SELECT
@@ -449,12 +529,7 @@ def student_attendance():
         FROM courses c
         INNER JOIN enrollments e
             ON c.course_id = e.course_id
-        INNER JOIN students s
-            ON e.student_id = s.student_id
         WHERE e.student_id = %s
-        AND c.stream_id = s.stream_id
-        AND c.semester = s.semester
-        AND c.section = s.section
         ORDER BY c.course_name
         """,
         (student_id,)
@@ -480,8 +555,7 @@ def student_attendance():
         selected_from_date = request.form.get("from_date") or ""
         selected_to_date = request.form.get("to_date") or ""
 
-        # Verify that the selected course is enrolled
-        # and matches all three student details
+        # Verify selected course belongs to logged-in student
         cursor.execute(
             """
             SELECT
@@ -491,13 +565,8 @@ def student_attendance():
             FROM courses c
             INNER JOIN enrollments e
                 ON c.course_id = e.course_id
-            INNER JOIN students s
-                ON e.student_id = s.student_id
             WHERE c.course_id = %s
             AND e.student_id = %s
-            AND c.stream_id = s.stream_id
-            AND c.semester = s.semester
-            AND c.section = s.section
             """,
             (course_id, student_id)
         )
@@ -506,6 +575,7 @@ def student_attendance():
 
         if selected_course:
 
+            # Base attendance query
             attendance_query = """
                 SELECT
                     attendance_date,
@@ -515,23 +585,24 @@ def student_attendance():
                 AND course_id = %s
             """
 
-            query_params = [
-                student_id,
-                course_id
-            ]
+            query_params = [student_id, course_id]
 
             # From date filter
             if selected_from_date:
+
                 attendance_query += """
                     AND attendance_date >= %s
                 """
+
                 query_params.append(selected_from_date)
 
             # To date filter
             if selected_to_date:
+
                 attendance_query += """
                     AND attendance_date <= %s
                 """
+
                 query_params.append(selected_to_date)
 
             attendance_query += """
@@ -545,7 +616,7 @@ def student_attendance():
 
             attendance_records = cursor.fetchall()
 
-            # Calculate attendance summary
+            # Calculate summary
             total_classes = len(attendance_records)
 
             for record in attendance_records:
@@ -557,6 +628,7 @@ def student_attendance():
                     absent_classes += 1
 
             if total_classes > 0:
+
                 attendance_percentage = round(
                     (present_classes / total_classes) * 100,
                     2
@@ -618,74 +690,41 @@ def teacher_dashboard():
 
     cursor = db.cursor(dictionary=True)
 
-    # Teacher details
     cursor.execute(
-        """
-        SELECT *
-        FROM teachers
-        WHERE teacher_id = %s
-        """,
+        "SELECT * FROM teachers WHERE teacher_id = %s",
         (teacher_id,)
     )
 
     teacher = cursor.fetchone()
 
-    # Teacher's courses with stream, semester and section
     cursor.execute(
         """
-        SELECT
-            c.course_id,
-            c.course_name,
-            c.course_code,
-            c.stream_id,
-            c.semester,
-            c.section,
-            s.stream_name
-        FROM courses c
-        LEFT JOIN streams s
-            ON c.stream_id = s.stream_id
-        WHERE c.teacher_id = %s
-        ORDER BY c.course_name
+        SELECT course_id, course_name, course_code
+        FROM courses
+        WHERE teacher_id = %s
         """,
         (teacher_id,)
     )
 
     courses = cursor.fetchall()
 
-    # Get only students matching each course
-    for course in courses:
+    cursor.execute(
+        """
+        SELECT student_id, name, email, roll_number, semester
+        FROM students
+        ORDER BY name
+        """
+    )
 
-        cursor.execute(
-            """
-            SELECT
-                student_id,
-                name,
-                email,
-                roll_number,
-                semester,
-                stream_id,
-                section
-            FROM students
-            WHERE stream_id = %s
-            AND semester = %s
-            AND section = %s
-            ORDER BY name
-            """,
-            (
-                course["stream_id"],
-                course["semester"],
-                course["section"]
-            )
-        )
-
-        course["students"] = cursor.fetchall()
+    students = cursor.fetchall()
 
     cursor.close()
 
     return render_template(
         "teacher-dashboard.html",
         teacher=teacher,
-        courses=courses
+        courses=courses,
+        students=students
     )
 
 @app.route("/manage-enrollments", methods=["POST"])
@@ -754,19 +793,9 @@ def manage_courses():
 
     cursor = db.cursor(dictionary=True)
 
-    # -------------------------------------------------
-    # Get courses created by this teacher
-    # -------------------------------------------------
-
     cursor.execute(
         """
-        SELECT
-            course_id,
-            course_name,
-            course_code,
-            stream_id,
-            semester,
-            section
+        SELECT course_id, course_name, course_code
         FROM courses
         WHERE teacher_id = %s
         """,
@@ -775,32 +804,7 @@ def manage_courses():
 
     courses = cursor.fetchall()
 
-
-    # -------------------------------------------------
-    # Get streams assigned to this teacher
-    # -------------------------------------------------
-
-    cursor.execute(
-        """
-        SELECT
-            s.stream_id,
-            s.stream_name
-        FROM streams s
-        INNER JOIN teacher_streams ts
-            ON s.stream_id = ts.stream_id
-        WHERE ts.teacher_id = %s
-        ORDER BY s.stream_name
-        """,
-        (teacher_id,)
-    )
-
-    streams = cursor.fetchall()
-
-
-    # -------------------------------------------------
     # Get enrolled students for each course
-    # -------------------------------------------------
-
     for course in courses:
 
         cursor.execute(
@@ -820,16 +824,13 @@ def manage_courses():
 
         course["students"] = cursor.fetchall()
 
-
     cursor.close()
-
 
     return render_template(
         "manage-courses.html",
-        courses=courses,
-        streams=streams
+        courses=courses
     )
-    
+
 @app.route("/mark-attendance", methods=["GET", "POST"])
 def mark_attendance():
 
@@ -1656,32 +1657,29 @@ def assistant_ask():
         # =====================================================
 
         prompt = f"""
-You are the AI Assistant of an AI Smart Attendance Management System.
-
+You are the helpful AI student assistant inside an AI Smart Attendance Management System.
 The logged-in user is a STUDENT.
 
-Answer the student's attendance-related question using ONLY
-the attendance information provided below. The question may be
-phrased in any natural way; understand its intent from the
-question and use the relevant data.
+You can help with attendance questions AND ordinary student needs such as:
+- politely communicating with teachers
+- explaining personal difficulties respectfully
+- study planning, exam preparation, and time management
+- academic habits, classroom communication, and general student guidance
 
-Student Attendance Data:
+Student Attendance Data (use only when relevant to the question):
 {attendance_data}
 
 Student Question:
 {message}
 
 Rules:
-1. Give a short, simple and clear answer.
-2. Do not make up attendance information.
-3. Use only the provided attendance data.
-4. You may calculate percentages, required classes, or other
-   simple attendance-related values using the provided numbers.
-5. If the student asks how to improve attendance, give
-   practical advice based on their actual attendance data.
-6. If a specific subject is mentioned, focus on that subject.
-7. If the question is unrelated to attendance, politely say
-   that you mainly help with attendance-related queries.
+1. Answer the exact question asked in a natural, kind, useful way. Keep it concise and clear.
+2. For attendance facts, percentages, subjects, and class counts, rely only on the provided data. Never invent or alter attendance records.
+3. For non-attendance questions, answer normally using general knowledge; do NOT force attendance percentages into the answer.
+4. If the student asks how to improve attendance, give practical advice and use their actual attendance data when relevant.
+5. If the question mentions a specific subject, focus on it only when relevant.
+6. For personal problems, do not demand private details. Offer respectful wording or practical next steps.
+7. Do not say that you only handle attendance queries. If a request is outside student support entirely, briefly explain the relevant limitation and offer a useful alternative.
 """
 
         # =====================================================
@@ -1855,6 +1853,12 @@ Rules:
                 "present_classes": present,
                 "percentage": percentage
             })
+
+        # Answer common teacher questions locally; keep Gemini for open-ended queries.
+        local_answer = local_teacher_answer(message_lower, courses, by_course)
+        if local_answer:
+            cursor.close()
+            return jsonify({"response": local_answer})
 
         teacher_summary_lines = []
 
@@ -2117,19 +2121,13 @@ Teacher Question:
 {message}
 
 Rules:
-1. Give a short, simple and clear answer.
-2. Do not make up student, course or attendance information.
-3. Use only the provided data.
-4. You may calculate simple values, percentages, comparisons,
-   or attendance requirements using the provided data.
-5. If the teacher asks about student performance,
-   use the attendance summary.
-6. If the teacher asks about improving attendance,
-   give practical suggestions based on the provided data.
-7. For date questions, use the attendance records and
-   attendance dates provided.
-8. If the question is unrelated to attendance or courses,
-   politely say that you mainly help with attendance management.
+1. Give a short, simple, clear and useful answer to the exact question.
+2. Do not invent student, course, or attendance facts.
+3. Use the provided teacher/course/attendance data only when the question requires those facts.
+4. You may calculate values, percentages, comparisons, or attendance requirements from the provided data.
+5. For improving student attendance, suggest practical steps grounded in the data.
+6. For date questions, rely on the supplied attendance records and dates.
+7. For general teaching, communication, planning, or classroom-management questions, answer normally without forcing attendance data into the reply.
 """
 
         # =====================================================
