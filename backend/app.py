@@ -690,43 +690,48 @@ def teacher_dashboard():
 
     cursor = db.cursor(dictionary=True)
 
-    cursor.execute(
-        "SELECT * FROM teachers WHERE teacher_id = %s",
-        (teacher_id,)
-    )
+    try:
+        cursor.execute(
+            "SELECT * FROM teachers WHERE teacher_id = %s",
+            (teacher_id,)
+        )
+        teacher = cursor.fetchone()
 
-    teacher = cursor.fetchone()
+        cursor.execute("""
+            SELECT course_id, course_name, course_code,
+                   stream_id, semester, section
+            FROM courses
+            WHERE teacher_id = %s
+        """, (teacher_id,))
+        courses = cursor.fetchall()
 
-    cursor.execute(
-        """
-        SELECT course_id, course_name, course_code
-        FROM courses
-        WHERE teacher_id = %s
-        """,
-        (teacher_id,)
-    )
+        # Fetch students eligible for each course
+        for course in courses:
+            cursor.execute("""
+                SELECT s.student_id, s.name, s.email,
+                       s.roll_number, s.semester
+                FROM students s
+                WHERE s.semester = %s
+                  AND NOT EXISTS (
+                      SELECT 1
+                      FROM enrollments e
+                      WHERE e.student_id = s.student_id
+                        AND e.course_id = %s
+                  )
+                ORDER BY s.name
+            """, (course["semester"], course["course_id"]))
 
-    courses = cursor.fetchall()
+            course["students"] = cursor.fetchall()
 
-    cursor.execute(
-        """
-        SELECT student_id, name, email, roll_number, semester
-        FROM students
-        ORDER BY name
-        """
-    )
-
-    students = cursor.fetchall()
-
-    cursor.close()
+    finally:
+        cursor.close()
 
     return render_template(
         "teacher-dashboard.html",
         teacher=teacher,
-        courses=courses,
-        students=students
+        courses=courses
     )
-
+    
 @app.route("/manage-enrollments", methods=["POST"])
 def manage_enrollments():
 
@@ -743,37 +748,35 @@ def manage_enrollments():
 
     cursor = db.cursor()
 
-    # Make sure the selected course belongs to the logged-in teacher
-    cursor.execute(
-        """
-        SELECT course_id
-        FROM courses
-        WHERE course_id = %s
-        AND teacher_id = %s
-        """,
-        (course_id, teacher_id)
-    )
-
-    course = cursor.fetchone()
-
-    if not course:
-        cursor.close()
-        return redirect(url_for("teacher_dashboard"))
-
-    # Enroll selected students
-    for student_id in student_ids:
-
+    try:
         cursor.execute(
             """
-            INSERT IGNORE INTO enrollments
-            (student_id, course_id)
-            VALUES (%s, %s)
+            SELECT course_id FROM courses
+            WHERE course_id = %s AND teacher_id = %s
             """,
-            (student_id, course_id)
+            (course_id, teacher_id)
         )
 
-    db.commit()
-    cursor.close()
+        if not cursor.fetchone():
+            return redirect(url_for("teacher_dashboard"))
+
+        for student_id in student_ids:
+            cursor.execute(
+                """
+                INSERT IGNORE INTO enrollments (student_id, course_id)
+                VALUES (%s, %s)
+                """,
+                (student_id, course_id)
+            )
+
+        db.commit()
+
+    except Exception:
+        db.rollback()
+        raise
+
+    finally:
+        cursor.close()
 
     return redirect(url_for("teacher_dashboard"))
 
@@ -793,42 +796,67 @@ def manage_courses():
 
     cursor = db.cursor(dictionary=True)
 
-    cursor.execute(
-        """
-        SELECT course_id, course_name, course_code
-        FROM courses
-        WHERE teacher_id = %s
-        """,
-        (teacher_id,)
-    )
+    try:
+        # Fetch streams assigned to this teacher
+        cursor.execute(
+            """
+            SELECT s.stream_id, s.stream_name
+            FROM streams s
+            INNER JOIN teacher_streams ts
+                ON s.stream_id = ts.stream_id
+            WHERE ts.teacher_id = %s
+            ORDER BY s.stream_name
+            """,
+            (teacher_id,)
+        )
+        streams = cursor.fetchall()
 
-    courses = cursor.fetchall()
-
-    # Get enrolled students for each course
-    for course in courses:
-
+        # Fetch teacher's courses with their stream details
         cursor.execute(
             """
             SELECT
-                s.student_id,
-                s.name,
-                s.roll_number
-            FROM students s
-            INNER JOIN enrollments e
-                ON s.student_id = e.student_id
-            WHERE e.course_id = %s
-            ORDER BY s.roll_number
+                c.course_id,
+                c.course_name,
+                c.course_code,
+                c.stream_id,
+                c.semester,
+                c.section,
+                s.stream_name
+            FROM courses c
+            LEFT JOIN streams s
+                ON c.stream_id = s.stream_id
+            WHERE c.teacher_id = %s
+            ORDER BY c.course_id DESC
             """,
-            (course["course_id"],)
+            (teacher_id,)
         )
+        courses = cursor.fetchall()
 
-        course["students"] = cursor.fetchall()
+        # Fetch enrolled students for each course
+        for course in courses:
+            cursor.execute(
+                """
+                SELECT
+                    st.student_id,
+                    st.name,
+                    st.roll_number
+                FROM students st
+                INNER JOIN enrollments e
+                    ON st.student_id = e.student_id
+                WHERE e.course_id = %s
+                ORDER BY st.roll_number
+                """,
+                (course["course_id"],)
+            )
+            course["students"] = cursor.fetchall()
 
-    cursor.close()
+    finally:
+        cursor.close()
 
     return render_template(
         "manage-courses.html",
-        courses=courses
+        courses=courses,
+        streams=streams
     )
 
 @app.route("/mark-attendance", methods=["GET", "POST"])
